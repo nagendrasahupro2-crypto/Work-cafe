@@ -51,10 +51,8 @@
 
     <header class="glass-header sticky top-0 z-50 border-b border-zinc-100">
         <div class="max-w-7xl mx-auto px-5 h-20 flex justify-between items-center">
-             <div class="flex flex-col"><span class="text-2xl font-black tracking-tighter text-zinc-900 leading-none">THE SECOND <span class="text-orange-600 italic">WIFE</span>
-                    </span>
-                    <span class="text-[7px] font-black tracking-[0.4em] text-zinc-400 uppercase ">Kitchen & Restaurant
-                    </span>
+             <div class="flex flex-col"><span class="text-2xl font-black tracking-tighter text-zinc-900 leading-none">THE SECOND <span class="text-orange-600 italic">WIFE</span></span>
+                    <span class="text-[7px] font-black tracking-[0.4em] text-zinc-400 uppercase ">Kitchen & Restaurant</span>
              </div>
             <button id="cart-trigger-btn" onclick="toggleCart(true)" class="relative p-3 bg-zinc-900 text-white rounded-2xl shadow-lg transition-transform active:scale-90">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
@@ -168,8 +166,8 @@
     </div>
 
     <script>
-        const SUPABASE_URL = 'https://bjymgwhthvwwupbisnpw.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqeW1nd2h0aHZ3d3VwYmlzbnB3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcxNzc4MjMsImV4cCI6MjA4Mjc1MzgyM30.B3cp2YE1iYF1m7OxuzlN0NRLSzjzopgCzAI9450m_nw';
+        const SUPABASE_URL = 'https://wziswulxvxbmgjyozdws.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6aXN3dWx4dnhibWdqeW96ZHdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2MTQ3MjMsImV4cCI6MjA4NTE5MDcyM30._MvWTWmkMvukwfllYKQ63PygBcsniZ_cCIWCzJ1WGIQ';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         if (!localStorage.getItem('cafe_device_id')) {
@@ -180,25 +178,20 @@
         let menuData = []; 
         let cart = [];
         let adminCart = []; 
-        let orders = [];
+        let localOrders = []; // CHANGE 5: Using local state for flow
         let isAdminLoggedIn = false;
         let isStaffLoggedIn = false;
-        const notifiedEvents = new Set();
-        let lastKnownOrderData = "";
         let lastStatusHTML = ""; 
 
         const sounds = {
-            newOrder: new Audio('https://assets.mixkit.co/active_storage/sfx/2040/2040-preview.mp3'),
-            adminCancelled: new Audio('https://assets.mixkit.co/active_storage/sfx/2357/2357-preview.mp3'), 
-            orderReady: new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'),
-            orderSent: new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3')
+            newOrder: new Audio('https://assets.mixkit.co/active_storage/sfx/2040/2040-preview.mp3')
         };
 
         window.addEventListener('hashchange', checkRoute);
         window.addEventListener('load', () => {
             fetchMenu();
             checkRoute();
-            setInterval(fetchOrders, 3000); 
+            // Note: We no longer auto-fetch orders from Supabase for flow, only for menu items.
             setInterval(fetchMenu, 15000); 
             setInterval(renderCustomerStatus, 1000); 
         });
@@ -206,7 +199,6 @@
         async function fetchMenu() {
             const { data, error } = await _supabase.from('menu_items').select('*').order('id', { ascending: true });
             if (!error && data) {
-                if (JSON.stringify(data) === JSON.stringify(menuData)) return;
                 menuData = data;
                 renderMenu(menuData);
                 renderCategoryBar();
@@ -214,196 +206,73 @@
             }
         }
 
-        async function fetchOrders() {
-            const { data, error } = await _supabase.from('orders').select('*').order('id', { ascending: false });
-            if (!error && data) {
-                processNotifications(data);
-                const dataString = JSON.stringify(data);
-                if (dataString !== lastKnownOrderData) {
-                    orders = data;
-                    lastKnownOrderData = dataString;
-                    renderCustomerStatus();
-                    if(isAdminLoggedIn) renderAdminBills();
-                    if(isStaffLoggedIn) renderStaffOrders();
-                }
-            }
+        // Logic Helper: Calculate bill based ONLY on accepted items
+        function calculateAcceptedTotal(items) {
+            return items.reduce((acc, item) => {
+                return item.status === 'Accepted' || item.status === 'Pending' ? acc + (item.price * item.qty) : acc;
+            }, 0);
         }
 
-        function toggleAdminBasket(s) {
-            const overlay = document.getElementById('admin-basket-overlay');
-            const sidebar = document.getElementById('admin-basket-sidebar');
-            overlay.classList.toggle('hidden', !s);
-            sidebar.style.transform = s ? 'translateX(0)' : 'translateX(100%)';
-            if(s) {
-                adminCart = []; 
-                updateAdminCartUI();
-                renderAdminInternalTabs();
-                renderAdminInternalMenu('All');
-            }
-        }
-
-        function renderAdminInternalTabs() {
-            const cats = ['All', ...new Set(menuData.map(m => m.category))];
-            document.getElementById('admin-basket-tabs').innerHTML = cats.map(c => `
-                <button onclick="renderAdminInternalMenu('${c}')" class="px-4 py-1 rounded-full bg-white border text-[10px] font-bold whitespace-nowrap active:bg-zinc-900 active:text-white transition-colors uppercase tracking-wider">${c}</button>
-            `).join('');
-        }
-
-        function renderAdminInternalMenu(cat) {
-            const filtered = cat === 'All' ? menuData : menuData.filter(m => m.category === cat);
-            document.getElementById('admin-internal-menu').innerHTML = filtered.map(item => `
-                <div class="flex items-center justify-between bg-zinc-50 p-4 rounded-xl border border-zinc-100 mb-1">
-                    <div>
-                        <p class="text-sm font-bold text-zinc-800">${item.name}</p>
-                        <p class="text-[10px] text-zinc-400 font-bold uppercase">₹${item.price}</p>
-                    </div>
-                    <button onclick="addToAdminCart(${item.id})" class="h-9 w-9 bg-zinc-900 text-white rounded-xl font-bold flex items-center justify-center shadow-md active:scale-90">+</button>
-                </div>
-            `).join('');
-        }
-
-        function addToAdminCart(id) {
-            const item = menuData.find(m => m.id === id);
-            const exist = adminCart.find(c => c.id === id);
-            if(exist) exist.qty++; else adminCart.push({...item, qty: 1});
-            updateAdminCartUI();
-        }
-
-        function updateAdminCartUI() {
-            document.getElementById('admin-cart-items').innerHTML = adminCart.map((item, i) => `
-                <div class="flex justify-between items-center bg-white p-3 rounded-xl border border-zinc-100 shadow-sm">
-                    <div class="flex flex-col">
-                        <span class="text-xs font-black text-zinc-900">${item.name}</span>
-                        <span class="text-[9px] text-zinc-400 uppercase font-bold">₹${item.price * item.qty}</span>
-                    </div>
-                    <div class="flex items-center gap-3">
-                        <button onclick="changeAdminQty(${i}, -1)" class="w-7 h-7 bg-zinc-100 rounded-lg text-xs font-bold">-</button>
-                        <span class="text-xs font-black min-w-[20px] text-center">${item.qty}</span>
-                        <button onclick="changeAdminQty(${i}, 1)" class="w-7 h-7 bg-zinc-900 text-white rounded-lg text-xs font-bold">+</button>
-                    </div>
-                </div>
-            `).join('');
-            document.getElementById('admin-cart-total').innerText = `₹${adminCart.reduce((s,i) => s + (i.price*i.qty), 0)}`;
-        }
-
-        function changeAdminQty(i, d) {
-            adminCart[i].qty += d;
-            if(adminCart[i].qty < 1) adminCart.splice(i, 1);
-            updateAdminCartUI();
-        }
-
-        async function saveAndSendAdminOrder() {
-            const name = document.getElementById('admin-cust-name').value.trim();
-            if(!name || adminCart.length === 0) return alert("Enter customer name and items.");
-            
-           const itemsText = adminCart.map(it => `${it.name} x${it.qty}`).join(', ');
-            const total = adminCart.reduce((s,i) => s + (i.price*i.qty), 0);
-            
-            const { error } = await _supabase.from('orders').insert([{ 
-                customer_name: name, 
-                item_name: itemsText, 
-                quantity: adminCart.reduce((s,i) => s + i.qty, 0), 
-                status: 'Pending', 
-                total_bill: total,
-                created_by: 'ADMIN',
-                table_number: 'Admin/Internal'
-            }]);
-            
-            if(!error) {
-                adminCart = []; 
-                document.getElementById('admin-cust-name').value = '';
-                toggleAdminBasket(false); 
-                fetchOrders();
-            }
-        }
-
-        function processNotifications(newList) {
-            newList.forEach(order => {
-                const oldOrder = orders.find(o => o.id === order.id);
-                const eventKey = `${order.id}-${order.status}`;
-                if (notifiedEvents.has(eventKey)) return;
-
-                if (isStaffLoggedIn && !oldOrder) {
-                    sounds.newOrder.play().catch(() => {});
-                    notifiedEvents.add(eventKey);
-                }
-
-                if (!isAdminLoggedIn && !isStaffLoggedIn && order.device_id === DEVICE_ID) {
-                    if (oldOrder && oldOrder.status !== 'Cancelled' && order.status === 'Cancelled' && order.cancelled_by === 'Admin') {
-                        sounds.adminCancelled.play().catch(() => {});
-                        const b = document.getElementById('cancel-banner'); b.classList.remove('hidden'); setTimeout(()=>b.classList.add('hidden'), 5000);
-                        notifiedEvents.add(eventKey);
-                    }
-                    else if (oldOrder && oldOrder.status === 'Pending' && order.status === 'Ready') {
-                        sounds.orderReady.play().catch(() => {});
-                        const b = document.getElementById('ready-banner'); b.classList.remove('hidden'); setTimeout(()=>b.classList.add('hidden'), 4000);
-                        notifiedEvents.add(eventKey);
-                    }
-                }
-            });
-        }
-
-        async function sendOrder() {
+        function sendOrder() {
             const name = document.getElementById('cust-name').value.trim();
             const tableNum = document.getElementById('table-number').value;
             if(!name || !tableNum || cart.length === 0) return alert("Please enter name, select a table, and add items.");
             
+            const orderId = Date.now();
             const itemsData = cart.map(it => ({ 
                 name: it.name, 
                 qty: it.qty, 
+                price: it.price,
                 note: it.note || '', 
                 status: 'Pending' 
             }));
 
-            const { error } = await _supabase.from('orders').insert([{ 
-                customer_name: name, 
-                item_name: itemsText, 
-                quantity: cart.reduce((s,i) => s + i.qty, 0), 
+            // CHANGE 5: Saved to local state, not Supabase
+            localOrders.unshift({
+                id: orderId,
+                customer_name: name,
+                item_name: JSON.stringify(itemsData),
+                quantity: cart.reduce((s,i) => s + i.qty, 0),
                 status: 'Pending',
                 device_id: DEVICE_ID,
-                total_bill: cart.reduce((s,i) => s + (i.price*i.qty), 0),
-                table_number: tableNum
-            }]);
-            if (!error) {
-                sounds.orderSent.play().catch(()=>{}); cart = []; updateUI(); toggleCart(false);
-                document.getElementById('cust-name').value = '';
-                document.getElementById('table-number').value = '';
-                document.getElementById('order-sent-banner').classList.remove('hidden'); 
-                setTimeout(()=>document.getElementById('order-sent-banner').classList.add('hidden'), 3000);
-                fetchOrders();
-            }
+                total_bill: calculateAcceptedTotal(itemsData),
+                table_number: tableNum,
+                created_at: new Date().toISOString()
+            });
+
+            cart = []; updateUI(); toggleCart(false);
+            document.getElementById('cust-name').value = '';
+            document.getElementById('table-number').value = '';
+            document.getElementById('order-sent-banner').classList.remove('hidden'); 
+            setTimeout(()=>document.getElementById('order-sent-banner').classList.add('hidden'), 3000);
+            
+            if(isStaffLoggedIn) renderStaffOrders();
+            renderCustomerStatus();
         }
 
-        async function updateOrderStatus(id, s, role) { 
-            const updateData = { status: s };
-            if (s === 'Cancelled') updateData.cancelled_by = role === 'staff' ? 'Admin' : 'Customer';
-            await _supabase.from('orders').update(updateData).eq('id', id); 
-            fetchOrders(); 
-        }
-
-        async function setStaffItemStatus(orderId, itemIndex, newStatus) {
-            const order = orders.find(o => o.id === orderId);
+        function setStaffItemStatus(orderId, itemIndex, newStatus) {
+            const order = localOrders.find(o => o.id === orderId);
             if(!order) return;
             
-            let items = [];
-            try { items = JSON.parse(order.item_name); } catch(e) { return; }
-            
+            let items = JSON.parse(order.item_name);
             items[itemIndex].status = newStatus;
             
-            await _supabase.from('orders').update({
-                item_name: JSON.stringify(items)
-            }).eq('id', orderId);
-            fetchOrders();
+            // CHANGE 2: Update total bill based on new statuses
+            order.item_name = JSON.stringify(items);
+            order.total_bill = items.reduce((acc, item) => {
+                // Bill only includes items that aren't rejected
+                return item.status !== 'Rejected' ? acc + (item.price * item.qty) : acc;
+            }, 0);
+            
+            renderStaffOrders();
+            renderCustomerStatus();
         }
 
         function renderStaffOrders() {
-            const active = orders.filter(o => o.status === 'Pending');
+            const active = localOrders.filter(o => o.status === 'Pending');
             const list = document.getElementById('staff-orders-list');
             list.innerHTML = active.map(o => {
-                let items = [];
-                try { items = JSON.parse(o.item_name); } catch(e) { 
-                    items = o.item_name.split(', ').map(s => ({ name: s, qty: '?', status: 'Pending' })); 
-                }
+                let items = JSON.parse(o.item_name);
 
                 return `
                 <div class="bg-white p-6 rounded-[32px] border border-zinc-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade">
@@ -421,8 +290,10 @@
                                         <span class="ml-2 text-[10px] font-black uppercase ${it.status === 'Accepted' ? 'text-green-500' : it.status === 'Rejected' ? 'text-red-500' : 'text-zinc-400'}">${it.status}</span>
                                     </div>
                                     <div class="flex gap-1">
-                                        <button onclick="setStaffItemStatus(${o.id}, ${idx}, 'Accepted')" class="w-8 h-8 bg-green-500 text-white rounded-lg flex items-center justify-center font-bold">✔</button>
-                                        <button onclick="setStaffItemStatus(${o.id}, ${idx}, 'Rejected')" class="w-8 h-8 bg-red-500 text-white rounded-lg flex items-center justify-center font-bold">✖</button>
+                                        ${it.status === 'Pending' ? `
+                                            <button onclick="setStaffItemStatus(${o.id}, ${idx}, 'Accepted')" class="w-8 h-8 bg-green-500 text-white rounded-lg flex items-center justify-center font-bold">✔</button>
+                                            <button onclick="setStaffItemStatus(${o.id}, ${idx}, 'Rejected')" class="w-8 h-8 bg-red-500 text-white rounded-lg flex items-center justify-center font-bold">✖</button>
+                                        ` : `<span class="font-bold text-xs ${it.status === 'Accepted' ? 'text-green-500' : 'text-red-500'}">${it.status}</span>`}
                                     </div>
                                 </div>
                             `).join('')}
@@ -430,20 +301,27 @@
                         <p class="text-sm font-black text-zinc-400 uppercase tracking-widest">Total: ₹${o.total_bill}</p>
                     </div>
                     <div class="flex gap-2 w-full md:w-auto">
-                        <button onclick="updateOrderStatus(${o.id}, 'Ready', 'staff')" class="flex-1 md:flex-none bg-zinc-900 text-white px-8 py-5 rounded-2xl font-bold text-xs uppercase shadow-xl">Ready</button>
-                        <button onclick="updateOrderStatus(${o.id}, 'Cancelled', 'staff')" class="flex-1 md:flex-none bg-red-50 text-red-600 px-6 py-5 rounded-2xl font-bold text-xs uppercase">Cancel</button>
+                        <button onclick="moveOrderToAdmin(${o.id})" class="flex-1 md:flex-none bg-zinc-900 text-white px-8 py-5 rounded-2xl font-bold text-xs uppercase shadow-xl">Done</button>
                     </div>
                 </div>
             `}).join('');
         }
 
+        function moveOrderToAdmin(id) {
+            const order = localOrders.find(o => o.id === id);
+            if(order) {
+                order.status = 'Ready';
+                if(isAdminLoggedIn) renderAdminBills();
+                renderStaffOrders();
+                renderCustomerStatus();
+            }
+        }
+
         function renderAdminBills() {
-            const readyToPrint = orders.filter(o => o.status === 'Ready');
+            const ready = localOrders.filter(o => o.status === 'Ready');
             const list = document.getElementById('admin-bills-list');
-            list.innerHTML = readyToPrint.map(o => {
-                let items = [];
-                try { items = JSON.parse(o.item_name); } catch(e) { items = o.item_name.split(', ').map(s => ({ name: s })); }
-                
+            list.innerHTML = ready.map(o => {
+                let items = JSON.parse(o.item_name);
                 return `
                 <div class="bg-white p-6 rounded-[32px] border border-zinc-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center animate-fade gap-4">
                     <div class="flex-grow">
@@ -452,46 +330,57 @@
                             <span class="text-[9px] font-black bg-zinc-900 text-white px-2 py-0.5 rounded-full uppercase">${o.table_number || ''}</span>
                         </div>
                         <div class="mt-2 space-y-1">
-                            ${items.map(it => `<p class="text-sm font-bold uppercase text-zinc-600">• ${it.name} ${it.qty ? `x${it.qty}` : ''}</p>`).join('')}
+                            ${items.map(it => `<p class="text-sm font-bold uppercase ${it.status === 'Rejected' ? 'line-through text-zinc-300' : 'text-zinc-600'}">• ${it.name} x${it.qty}</p>`).join('')}
                         </div>
                         <p class="text-2xl font-black mt-3 text-zinc-900">₹${o.total_bill}</p>
                     </div>
-                    <button onclick="completeOrder(${o.id})" class="w-full sm:w-auto bg-green-600 text-white px-10 py-5 rounded-2xl font-bold text-xs uppercase shadow-lg">Done</button>
+                    <button onclick="finalizeOrder(${o.id})" class="w-full sm:w-auto bg-green-600 text-white px-10 py-5 rounded-2xl font-bold text-xs uppercase shadow-lg">Done</button>
                 </div>
             `}).join('');
         }
 
-        async function completeOrder(orderId) {
-            await _supabase.from('orders').update({ status: 'Completed' }).eq('id', orderId);
-            fetchOrders();
+        async function finalizeOrder(orderId) {
+            const order = localOrders.find(o => o.id === orderId);
+            if(!order) return;
+
+            // CHANGE 5: Only save to Supabase when Admin clicks Done
+            const { error } = await _supabase.from('orders').insert([{
+                customer_name: order.customer_name,
+                item_name: order.item_name,
+                quantity: order.quantity,
+                status: 'Completed',
+                total_bill: order.total_bill,
+                table_number: order.table_number,
+                device_id: order.device_id
+            }]);
+
+            if(!error) {
+                localOrders = localOrders.filter(o => o.id !== orderId);
+                renderAdminBills();
+                renderCustomerStatus();
+            }
         }
 
         function renderCustomerStatus() {
-            const active = orders.filter(o => (o.status !== 'Completed' && o.status !== 'Cancelled') && o.device_id === DEVICE_ID && o.created_by !== 'ADMIN');
+            const active = localOrders.filter(o => o.device_id === DEVICE_ID);
             const statusBox = document.getElementById('customer-order-status');
             
             if (active.length === 0) {
-                if (!statusBox.classList.contains('hidden')) {
-                    statusBox.classList.add('hidden');
-                    lastStatusHTML = "";
-                }
+                statusBox.classList.add('hidden');
                 return;
             }
 
             statusBox.classList.remove('hidden');
             
             const newHTML = active.map(o => {
-                let items = [];
-                try { items = JSON.parse(o.item_name); } catch(e) { items = []; }
-
+                let items = JSON.parse(o.item_name);
                 return `
-                <div class="bg-white border p-6 rounded-[32px] flex flex-col gap-4 shadow-sm" data-id="${o.id}">
+                <div class="bg-white border p-6 rounded-[32px] flex flex-col gap-4 shadow-sm">
                     <div class="flex justify-between items-center border-b pb-4">
                         <div>
-                            <p class="text-[10px] font-black text-zinc-400 uppercase">#ORD-${o.id} • ${o.table_number || ''}</p>
-                            <p class="font-bold text-sm text-zinc-800">${o.customer_name}, order is ${o.status}</p>
+                            <p class="font-bold text-sm text-zinc-800">${o.customer_name}, your order</p>
                         </div>
-                        <span class="px-4 py-2 rounded-full text-[10px] font-black uppercase ${o.status === 'Ready' ? 'bg-green-100 text-green-600 animate-pulse' : 'bg-orange-100 text-orange-600'}">${o.status}</span>
+                        <span class="px-4 py-2 rounded-full text-[10px] font-black uppercase bg-zinc-100 text-zinc-600">${o.status}</span>
                     </div>
                     <div class="space-y-3">
                         ${items.map(it => `
@@ -519,6 +408,8 @@
                 lastStatusHTML = newHTML;
             }
         }
+
+        // --- REMAINDER OF UTILITY FUNCTIONS KEPT UNCHANGED ---
 
         function renderMenu(items) {
             document.getElementById('menu-grid').innerHTML = items.map(item => `
@@ -591,6 +482,68 @@
         function switchAdminTab(tab) { document.getElementById('admin-bills-sec').classList.toggle('hidden', tab !== 'bills'); document.getElementById('admin-menu-sec').classList.toggle('hidden', tab !== 'menu'); document.getElementById('tab-bills').className = tab === 'bills' ? 'px-6 py-2 rounded-full bg-zinc-900 text-white font-bold text-sm' : 'px-6 py-2 rounded-full bg-zinc-100 text-zinc-400 font-bold text-sm'; document.getElementById('tab-menu').className = tab === 'menu' ? 'px-6 py-2 rounded-full bg-zinc-900 text-white font-bold text-sm' : 'px-6 py-2 rounded-full bg-zinc-100 text-zinc-400 font-bold text-sm'; }
         async function updateMenuField(id, field, value) { await _supabase.from('menu_items').update({ [field]: value }).eq('id', id); fetchMenu(); }
         function renderAdminMenu() { document.getElementById('admin-menu-list').innerHTML = menuData.map(item => `<div class="bg-white p-5 rounded-3xl border border-zinc-100 shadow-sm flex items-center justify-between"><div class="flex items-center gap-4"><img src="${item.image_url}" class="w-16 h-16 rounded-2xl object-cover"><div><h4 class="font-bold text-zinc-900">${item.name}</h4><p class="text-xs text-zinc-400">₹${item.price}</p></div></div><div class="flex gap-2"><button onclick="const p=prompt('New Price:', ${item.price}); if(p) updateMenuField(${item.id}, 'price', parseInt(p))" class="px-4 py-2 bg-zinc-100 rounded-xl text-[10px] font-black uppercase">Rate</button><button onclick="updateMenuField(${item.id}, 'is_available', ${!item.is_available})" class="px-4 py-2 ${item.is_available ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'} rounded-xl text-[10px] font-black uppercase">${item.is_available ? 'Live' : 'Hidden'}</button></div></div>`).join(''); }
+        
+        function toggleAdminBasket(s) {
+            const overlay = document.getElementById('admin-basket-overlay');
+            const sidebar = document.getElementById('admin-basket-sidebar');
+            overlay.classList.toggle('hidden', !s);
+            sidebar.style.transform = s ? 'translateX(0)' : 'translateX(100%)';
+            if(s) {
+                adminCart = []; 
+                updateAdminCartUI();
+                renderAdminInternalTabs();
+                renderAdminInternalMenu('All');
+            }
+        }
+        function renderAdminInternalTabs() {
+            const cats = ['All', ...new Set(menuData.map(m => m.category))];
+            document.getElementById('admin-basket-tabs').innerHTML = cats.map(c => `<button onclick="renderAdminInternalMenu('${c}')" class="px-4 py-1 rounded-full bg-white border text-[10px] font-bold whitespace-nowrap active:bg-zinc-900 active:text-white transition-colors uppercase tracking-wider">${c}</button>`).join('');
+        }
+        function renderAdminInternalMenu(cat) {
+            const filtered = cat === 'All' ? menuData : menuData.filter(m => m.category === cat);
+            document.getElementById('admin-internal-menu').innerHTML = filtered.map(item => `
+                <div class="flex items-center justify-between bg-zinc-50 p-4 rounded-xl border border-zinc-100 mb-1">
+                    <div><p class="text-sm font-bold text-zinc-800">${item.name}</p><p class="text-[10px] text-zinc-400 font-bold uppercase">₹${item.price}</p></div>
+                    <button onclick="addToAdminCart(${item.id})" class="h-9 w-9 bg-zinc-900 text-white rounded-xl font-bold flex items-center justify-center shadow-md active:scale-90">+</button>
+                </div>
+            `).join('');
+        }
+        function addToAdminCart(id) {
+            const item = menuData.find(m => m.id === id);
+            const exist = adminCart.find(c => c.id === id);
+            if(exist) exist.qty++; else adminCart.push({...item, qty: 1});
+            updateAdminCartUI();
+        }
+        function updateAdminCartUI() {
+            document.getElementById('admin-cart-items').innerHTML = adminCart.map((item, i) => `
+                <div class="flex justify-between items-center bg-white p-3 rounded-xl border border-zinc-100 shadow-sm">
+                    <div class="flex flex-col"><span class="text-xs font-black text-zinc-900">${item.name}</span><span class="text-[9px] text-zinc-400 uppercase font-bold">₹${item.price * item.qty}</span></div>
+                    <div class="flex items-center gap-3"><button onclick="changeAdminQty(${i}, -1)" class="w-7 h-7 bg-zinc-100 rounded-lg text-xs font-bold">-</button><span class="text-xs font-black min-w-[20px] text-center">${item.qty}</span><button onclick="changeAdminQty(${i}, 1)" class="w-7 h-7 bg-zinc-900 text-white rounded-lg text-xs font-bold">+</button></div>
+                </div>
+            `).join('');
+            document.getElementById('admin-cart-total').innerText = `₹${adminCart.reduce((s,i) => s + (i.price*i.qty), 0)}`;
+        }
+        function changeAdminQty(i, d) { adminCart[i].qty += d; if(adminCart[i].qty < 1) adminCart.splice(i, 1); updateAdminCartUI(); }
+        
+        function saveAndSendAdminOrder() {
+            const name = document.getElementById('admin-cust-name').value.trim();
+            if(!name || adminCart.length === 0) return alert("Enter customer name and items.");
+            const itemsData = adminCart.map(it => ({ name: it.name, qty: it.qty, price: it.price, status: 'Accepted' }));
+            localOrders.unshift({
+                id: Date.now(),
+                customer_name: name,
+                item_name: JSON.stringify(itemsData),
+                quantity: adminCart.reduce((s,i) => s + i.qty, 0),
+                status: 'Ready',
+                total_bill: calculateAcceptedTotal(itemsData),
+                table_number: 'Admin/Internal',
+                device_id: 'ADMIN'
+            });
+            adminCart = []; 
+            document.getElementById('admin-cust-name').value = '';
+            toggleAdminBasket(false); 
+            if(isAdminLoggedIn) renderAdminBills();
+        }
     </script>
 </body>
 </html>
