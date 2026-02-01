@@ -354,7 +354,6 @@
                 note: it.note || '', 
                 status: 'Pending' 
             }));
-            const itemsText = JSON.stringify(itemsData);
 
             const { error } = await _supabase.from('orders').insert([{ 
                 customer_name: name, 
