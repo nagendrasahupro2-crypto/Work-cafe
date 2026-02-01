@@ -210,30 +210,40 @@
             }
         }
 
-        async function setStaffItemStatus(orderId, itemIndex, newStatus) {
-            const order = orders.find(o => o.id === orderId);
-            if(!order) return;
-            
-            let items = [];
-            try { items = JSON.parse(order.item_name); } catch(e) { return; }
-            
-            items[itemIndex].status = newStatus;
+async function setStaffItemStatus(orderId, itemIndex, newStatus) {
+    const order = orders.find(o => o.id === orderId);
+    if(!order) return;
+    
+    let items = [];
+    // Ab hum 'order_details' se data nikalenge
+    try { items = JSON.parse(order.order_details); } catch(e) { return; }
+    
+    items[itemIndex].status = newStatus;
 
-            let newTotal = 0;
-            items.forEach(it => {
-                if (it.status !== 'Rejected') {
-                    const menuItem = menuData.find(m => m.name === it.name.split(' ×')[0]);
-                    const price = menuItem ? menuItem.price : 0;
-                    newTotal += (price * it.qty);
-                }
-            });
-            
-            await _supabase.from('orders').update({
-                item_name: JSON.stringify(items),
-                total_bill: newTotal
-            }).eq('id', orderId);
-            fetchOrders();
+    // Naya total aur quantity calculate karein
+    let newTotal = 0;
+    let newQty = 0;
+    items.forEach(it => {
+        if (it.status !== 'Rejected') {
+            const menuItem = menuData.find(m => m.name === it.name);
+            newTotal += (menuItem ? menuItem.price : 0) * it.qty;
+            newQty += it.qty;
         }
+    });
+
+    // Dono columns update karein
+    const newCleanName = items.filter(it => it.status !== 'Rejected')
+                              .map(it => `${it.name} ×${it.qty}`).join(', ');
+
+    await _supabase.from('orders').update({
+        item_name: newCleanName, // UI/Supabase ke liye
+        order_details: JSON.stringify(items), // Logic ke liye
+        total_bill: newTotal,
+        quantity: newQty
+    }).eq('id', orderId);
+
+    fetchOrders();
+}
 
         function renderStaffOrders() {
             const active = orders.filter(o => o.status === 'Pending');
@@ -318,32 +328,37 @@
             }
         }
 
-        async function sendOrder() {
-            const name = document.getElementById('cust-name').value.trim();
-            const tableNum = document.getElementById('table-number').value;
-            if(!name || !tableNum || cart.length === 0) return alert("Please enter name, select a table, and add items.");
-            
-            const itemsData = cart.map(it => ({ name: `${it.name} ×${it.qty}`, qty: it.qty, status: 'Pending' }));
-            const itemsText = JSON.stringify(itemsData);
+async function sendOrder() {
+    const name = document.getElementById('cust-name').value.trim();
+    const tableNum = document.getElementById('table-number').value;
+    if(!name || !tableNum || cart.length === 0) return alert("Details bhariye!");
 
-            const { error } = await _supabase.from('orders').insert([{ 
-                customer_name: name, 
-                item_name: itemsText, 
-                quantity: cart.reduce((s,i) => s + i.qty, 0), 
-                status: 'Pending',
-                device_id: DEVICE_ID,
-                total_bill: cart.reduce((s,i) => s + (i.price*i.qty), 0),
-                table_number: tableNum
-            }]);
-            if (!error) {
-                sounds.orderSent.play().catch(()=>{}); cart = []; updateUI(); toggleCart(false);
-                document.getElementById('cust-name').value = '';
-                document.getElementById('table-number').value = '';
-                document.getElementById('order-sent-banner').classList.remove('hidden'); 
-                setTimeout(()=>document.getElementById('order-sent-banner').classList.add('hidden'), 3000);
-                fetchOrders();
-            }
-        }
+    // Supabase ke 'item_name' ke liye ekdam saaf text (Example: "Espresso ×2, Tea ×1")
+    const cleanNameText = cart.map(it => `${it.name} ×${it.qty}`).join(', ');
+
+    // Naye 'order_details' column ke liye technical data (JSON)
+    const technicalData = JSON.stringify(cart.map(it => ({ 
+        name: it.name, 
+        qty: it.qty, 
+        status: 'Pending' 
+    })));
+
+    const { error } = await _supabase.from('orders').insert([{ 
+        customer_name: name, 
+        item_name: cleanNameText, // Ab ye Supabase mein saaf dikhega
+        order_details: technicalData, // Saara JSON yahan jayega
+        quantity: cart.reduce((s,i) => s + i.qty, 0), 
+        status: 'Pending',
+        device_id: DEVICE_ID,
+        total_bill: cart.reduce((s,i) => s + (i.price*i.qty), 0),
+        table_number: tableNum
+    }]);
+
+    if (!error) {
+        // Success logic...
+        cart = []; updateUI(); fetchOrders();
+    }
+}
 
         async function updateOrderStatus(id, s, role) { 
             await _supabase.from('orders').update({ status: s }).eq('id', id); 
