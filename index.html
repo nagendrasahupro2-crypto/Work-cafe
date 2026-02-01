@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Second Wife | Premium Experience</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #fafafa; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .glass-header { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .active-cat { background-color: #1a1a1a !important; color: white !important; transform: scale(1.05); }
+        .item-card { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .item-card:hover { transform: translateY(-8px); box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1); }
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+        .animate-fade { animation: slideIn 0.5s ease forwards; }
+        .animate-slideUp { animation: slideUp 0.4s ease-out; }
+    </style>
+</head>
+<body class="text-slate-900 pb-20">
+
+    <div id="order-sent-banner" class="hidden fixed top-8 left-1/2 -translate-x-1/2 z-[200] w-[90%] max-w-sm">
+        <div class="bg-zinc-900 text-white p-5 rounded-3xl shadow-2xl flex items-center gap-4 border border-white/10">
+            <div class="h-10 w-10 bg-orange-500 rounded-full flex items-center justify-center text-xl">👨‍🍳</div>
+            <div><p class="font-bold text-sm">Order Sent!</p><p class="text-[10px] text-zinc-400">Kitchen has received your request.</p></div>
+        </div>
+    </div>
+
+    <div id="cancel-banner" class="hidden fixed top-8 left-1/2 -translate-x-1/2 z-[200] w-[90%] max-w-sm">
+        <div class="bg-red-600 text-white p-5 rounded-3xl shadow-2xl flex items-center gap-4 border border-white/10">
+            <div class="h-10 w-10 bg-white rounded-full flex items-center justify-center text-xl">❌</div>
+            <div><p class="font-bold text-sm">Order Cancelled</p><p class="text-[10px] text-red-100">Your order was cancelled by the store.</p></div>
+        </div>
+    </div>
+
+    <div id="ready-banner" class="hidden fixed top-8 left-1/2 -translate-x-1/2 z-[200] w-[90%] max-w-sm">
+        <div class="bg-indigo-600 text-white p-5 rounded-3xl shadow-2xl flex items-center gap-4 border border-white/10">
+            <div class="h-10 w-10 bg-white rounded-full flex items-center justify-center text-xl">🛎️</div>
+            <div><p class="font-bold text-sm">Ready to Collect!</p><p class="text-[10px] text-indigo-100">Pick up your order at the counter.</p></div>
+        </div>
+    </div>
+
+    <div id="silent-popup" class="hidden fixed bottom-10 left-1/2 -translate-x-1/2 z-[150] animate-slideUp">
+        <div class="bg-zinc-900/90 backdrop-blur-md text-white px-6 py-3 rounded-2xl shadow-2xl flex items-center gap-2 border border-white/10">
+            <span class="text-green-400 text-lg">✔</span> <span class="text-[10px] font-black uppercase tracking-[0.2em]">Added to Basket</span>
+        </div>
+    </div>
+
+    <header class="glass-header sticky top-0 z-50 border-b border-zinc-100">
+        <div class="max-w-7xl mx-auto px-5 h-20 flex justify-between items-center">
+             <div class="flex flex-col"><span class="text-2xl font-black tracking-tighter text-zinc-900 leading-none">THE SECOND <span class="text-orange-600 italic">WIFE</span>
+                    </span>
+                    <span class="text-[7px] font-black tracking-[0.4em] text-zinc-400 uppercase ">Kitchen & Restaurant
+                    </span>
+             </div>
+            <button id="cart-trigger-btn" onclick="toggleCart(true)" class="relative p-3 bg-zinc-900 text-white rounded-2xl shadow-lg transition-transform active:scale-90">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+                <span id="cart-count" class="absolute -top-1 -right-1 bg-orange-500 text-white text-[9px] w-5 h-5 flex items-center justify-center rounded-full border-2 border-white font-bold">0</span>
+            </button>
+        </div>
+    </header>
+
+    <section id="customer-panel" class="max-w-7xl mx-auto px-5 py-8">
+        <div id="customer-order-status" class="mb-10 hidden">
+            <h3 class="text-xs font-black uppercase tracking-widest text-zinc-400 mb-4">Your Active Orders</h3>
+            <div id="status-list" class="flex flex-col gap-3"></div>
+        </div>
+        <div class="flex gap-4 overflow-x-auto no-scrollbar mb-10 pb-2" id="category-bar"></div>
+        <main id="menu-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"></main>
+    </section>
+
+    <section id="admin-panel" class="hidden max-w-5xl mx-auto px-5 py-10 relative">
+        <div class="flex justify-between items-center mb-10">
+            <h2 class="text-4xl font-extrabold text-zinc-900">Admin Panel</h2>
+            <div class="flex items-center gap-4">
+                <button onclick="toggleAdminBasket(true)" class="px-4 py-2 bg-orange-500 text-white rounded-xl font-bold text-xs uppercase shadow-lg transition-transform active:scale-90">Create New Order</button>
+                <button onclick="location.hash=''" class="text-[10px] font-black uppercase text-zinc-400">Exit Admin</button>
+            </div>
+        </div>
+        <div class="flex gap-4 mb-8">
+            <button onclick="switchAdminTab('bills')" id="tab-bills" class="px-6 py-2 rounded-full bg-zinc-900 text-white font-bold text-sm">Active Orders</button>
+            <button onclick="switchAdminTab('menu')" id="tab-menu" class="px-6 py-2 rounded-full bg-zinc-100 text-zinc-400 font-bold text-sm">Manage Menu</button>
+        </div>
+        <div id="admin-bills-sec">
+            <div id="admin-bills-list" class="grid gap-6"></div>
+        </div>
+        <div id="admin-menu-sec" class="hidden">
+            <div id="admin-menu-list" class="grid gap-4"></div>
+        </div>
+    </section>
+
+    <section id="staff-panel" class="hidden max-w-5xl mx-auto px-5 py-10 relative">
+        <div class="flex justify-between items-center mb-10">
+            <h2 class="text-4xl font-extrabold text-zinc-900 text-orange-600">Staff Panel</h2>
+            <button onclick="location.hash=''" class="text-[10px] font-black uppercase text-zinc-400">Exit Staff</button>
+        </div>
+        <div id="staff-orders-list" class="grid gap-6"></div>
+    </section>
+
+    <div id="admin-basket-overlay" class="hidden fixed inset-0 bg-zinc-900/60 z-[200] backdrop-blur-md transition-all" onclick="toggleAdminBasket(false)">
+        <div id="admin-basket-sidebar" class="absolute right-0 top-0 h-full w-full sm:w-[500px] bg-white shadow-2xl flex flex-col translate-x-full transition-transform duration-500" onclick="event.stopPropagation()">
+            <div class="p-8 border-b flex justify-between items-center">
+                <h2 class="text-2xl font-black">Internal Order</h2>
+                <button onclick="toggleAdminBasket(false)" class="text-2xl">&times;</button>
+            </div>
+            <div id="admin-basket-tabs" class="flex gap-2 overflow-x-auto p-4 border-b no-scrollbar bg-zinc-50"></div>
+            <div id="admin-internal-menu" class="flex-grow overflow-y-auto p-6 space-y-2"></div>
+            <div id="admin-order-summary" class="p-8 bg-zinc-50 border-t">
+                <input type="text" id="admin-cust-name" placeholder="Customer Name" class="w-full bg-white p-4 rounded-2xl border mb-4 font-bold outline-none shadow-sm">
+                <h3 class="text-[10px] font-black uppercase text-zinc-400 mb-4 tracking-widest">Basket Items</h3>
+                <div id="admin-cart-items" class="mb-6 space-y-3"></div>
+                <div class="flex justify-between items-center mb-6">
+                    <span class="font-bold text-zinc-400 text-xs uppercase">Total Bill</span>
+                    <span id="admin-cart-total" class="text-3xl font-black">₹0</span>
+                </div>
+                <div id="admin-action-area">
+                    <button id="btn-save-admin-order" onclick="saveAndSendAdminOrder()" class="w-full bg-zinc-900 text-white py-5 rounded-2xl font-bold transition-all active:scale-[0.98]">Send to Staff</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <section id="admin-login-panel" class="hidden max-w-md mx-auto px-5 py-20">
+        <div class="bg-white p-10 rounded-[40px] border shadow-2xl">
+            <h2 class="text-2xl font-black mb-8 italic text-center uppercase tracking-widest">Admin Login</h2>
+            <div class="space-y-4">
+                <input type="text" id="admin-id" placeholder="ID" class="w-full bg-zinc-50 p-4 rounded-2xl border font-bold outline-none">
+                <input type="password" id="admin-pass" placeholder="Password" class="w-full bg-zinc-50 p-4 rounded-2xl border font-bold outline-none">
+                <button onclick="handleLogin('admin')" class="w-full bg-zinc-900 text-white py-4 rounded-2xl font-bold">Login</button>
+            </div>
+        </div>
+    </section>
+
+    <section id="staff-login-panel" class="hidden max-w-md mx-auto px-5 py-20">
+        <div class="bg-white p-10 rounded-[40px] border shadow-2xl">
+            <h2 class="text-2xl font-black mb-8 italic text-center uppercase tracking-widest">Staff Login</h2>
+            <div class="space-y-4">
+                <input type="text" id="staff-id" placeholder="ID" class="w-full bg-zinc-50 p-4 rounded-2xl border font-bold outline-none">
+                <input type="password" id="staff-pass" placeholder="Password" class="w-full bg-zinc-50 p-4 rounded-2xl border font-bold outline-none">
+                <button onclick="handleLogin('staff')" class="w-full bg-zinc-900 text-orange-600 py-4 rounded-2xl font-bold border-2 border-orange-600">Login</button>
+            </div>
+        </div>
+    </section>
+
+    <div id="cart-sidebar-overlay" class="hidden fixed inset-0 bg-zinc-900/60 z-[100] backdrop-blur-md transition-all" onclick="toggleCart(false)">
+        <div id="cart-sidebar" class="absolute right-0 top-0 h-full w-full sm:w-[450px] bg-white shadow-2xl flex flex-col translate-x-full transition-transform duration-500" onclick="event.stopPropagation()">
+            <div class="p-8 border-b flex justify-between items-center"><h2 class="text-2xl font-black">My Basket</h2><button onclick="toggleCart(false)" class="text-2xl">&times;</button></div>
+            <div id="cart-content" class="flex-grow overflow-y-auto p-8 space-y-8"></div>
+            <div class="p-8 bg-zinc-50 border-t">
+                <input type="text" id="cust-name" placeholder="Guest Name" class="w-full bg-white p-4 rounded-2xl border mb-4 font-bold outline-none shadow-sm">
+                
+                <select id="table-number" class="w-full bg-white p-4 rounded-2xl border mb-4 font-bold outline-none shadow-sm appearance-none">
+                    <option value="" disabled selected>Select Table Number</option>
+                    <option value="Table 1">Table 1</option>
+                    <option value="Table 2">Table 2</option>
+                    <option value="Table 3">Table 3</option>
+                    <option value="Table 4">Table 4</option>
+                    <option value="Table 5">Table 5</option>
+                </select>
+
+                <div class="flex justify-between items-center mb-8"><span class="font-bold text-zinc-400 text-xs">Total Bill</span><span id="cart-total-price" class="text-4xl font-black">₹0</span></div>
+                <button onclick="sendOrder()" class="w-full bg-zinc-900 text-white py-5 rounded-2xl font-bold">Send to Kitchen</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://wziswulxvxbmgjyozdws.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind6aXN3dWx4dnhibWdqeW96ZHdzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk2MTQ3MjMsImV4cCI6MjA4NTE5MDcyM30._MvWTWmkMvukwfllYKQ63PygBcsniZ_cCIWCzJ1WGIQ';
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        if (!localStorage.getItem('cafe_device_id')) {
+            localStorage.setItem('cafe_device_id', 'DEV-' + Math.random().toString(36).substr(2, 9).toUpperCase());
+        }
+        const DEVICE_ID = localStorage.getItem('cafe_device_id');
+
+        let menuData = []; 
+        let cart = [];
+        let adminCart = []; 
+        let orders = [];
+        let isAdminLoggedIn = false;
+        let isStaffLoggedIn = false;
+        const notifiedEvents = new Set();
+        let lastKnownOrderData = "";
+        let lastStatusHTML = ""; 
+
+        const sounds = {
+            newOrder: new Audio('https://assets.mixkit.co/active_storage/sfx/2040/2040-preview.mp3'),
+            adminCancelled: new Audio('https://assets.mixkit.co/active_storage/sfx/2357/2357-preview.mp3'), 
+            orderReady: new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3'),
+            orderSent: new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3')
+        };
+
+        window.addEventListener('hashchange', checkRoute);
+        window.addEventListener('load', () => {
+            fetchMenu();
+            checkRoute();
+            setInterval(fetchOrders, 3000); 
+            setInterval(fetchMenu, 15000); 
+            setInterval(renderCustomerStatus, 1000); 
+        });
+
+        async function fetchMenu() {
+            const { data, error } = await _supabase.from('menu_items').select('*').order('id', { ascending: true });
+            if (!error && data) {
+                if (JSON.stringify(data) === JSON.stringify(menuData)) return;
+                menuData = data;
+                renderMenu(menuData);
+                renderCategoryBar();
+                if(isAdminLoggedIn) renderAdminMenu();
+            }
+        }
+
+        async function fetchOrders() {
+            const { data, error } = await _supabase.from('orders').select('*').order('id', { ascending: false });
+            if (!error && data) {
+                processNotifications(data);
+                const dataString = JSON.stringify(data);
+                if (dataString !== lastKnownOrderData) {
+                    orders = data;
+                    lastKnownOrderData = dataString;
+                    renderCustomerStatus();
+                    if(isAdminLoggedIn) renderAdminBills();
+                    if(isStaffLoggedIn) renderStaffOrders();
+                }
+            }
+        }
+
+        function toggleAdminBasket(s) {
+            const overlay = document.getElementById('admin-basket-overlay');
+            const sidebar = document.getElementById('admin-basket-sidebar');
+            overlay.classList.toggle('hidden', !s);
+            sidebar.style.transform = s ? 'translateX(0)' : 'translateX(100%)';
+            if(s) {
+                adminCart = []; 
+                updateAdminCartUI();
+                renderAdminInternalTabs();
+                renderAdminInternalMenu('All');
+            }
+        }
+
+        function renderAdminInternalTabs() {
+            const cats = ['All', ...new Set(menuData.map(m => m.category))];
+            document.getElementById('admin-basket-tabs').innerHTML = cats.map(c => `
+                <button onclick="renderAdminInternalMenu('${c}')" class="px-4 py-1 rounded-full bg-white border text-[10px] font-bold whitespace-nowrap active:bg-zinc-900 active:text-white transition-colors uppercase tracking-wider">${c}</button>
+            `).join('');
+        }
+
+        function renderAdminInternalMenu(cat) {
+            const filtered = cat === 'All' ? menuData : menuData.filter(m => m.category === cat);
+            document.getElementById('admin-internal-menu').innerHTML = filtered.map(item => `
+                <div class="flex items-center justify-between bg-zinc-50 p-4 rounded-xl border border-zinc-100 mb-1">
+                    <div>
+                        <p class="text-sm font-bold text-zinc-800">${item.name}</p>
+                        <p class="text-[10px] text-zinc-400 font-bold uppercase">₹${item.price}</p>
+                    </div>
+                    <button onclick="addToAdminCart(${item.id})" class="h-9 w-9 bg-zinc-900 text-white rounded-xl font-bold flex items-center justify-center shadow-md active:scale-90">+</button>
+                </div>
+            `).join('');
+        }
+
+        function addToAdminCart(id) {
+            const item = menuData.find(m => m.id === id);
+            const exist = adminCart.find(c => c.id === id);
+            if(exist) exist.qty++; else adminCart.push({...item, qty: 1});
+            updateAdminCartUI();
+        }
+
+        function updateAdminCartUI() {
+            document.getElementById('admin-cart-items').innerHTML = adminCart.map((item, i) => `
+                <div class="flex justify-between items-center bg-white p-3 rounded-xl border border-zinc-100 shadow-sm">
+                    <div class="flex flex-col">
+                        <span class="text-xs font-black text-zinc-900">${item.name}</span>
+                        <span class="text-[9px] text-zinc-400 uppercase font-bold">₹${item.price * item.qty}</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="changeAdminQty(${i}, -1)" class="w-7 h-7 bg-zinc-100 rounded-lg text-xs font-bold">-</button>
+                        <span class="text-xs font-black min-w-[20px] text-center">${item.qty}</span>
+                        <button onclick="changeAdminQty(${i}, 1)" class="w-7 h-7 bg-zinc-900 text-white rounded-lg text-xs font-bold">+</button>
+                    </div>
+                </div>
+            `).join('');
+            document.getElementById('admin-cart-total').innerText = `₹${adminCart.reduce((s,i) => s + (i.price*i.qty), 0)}`;
+        }
+
+        function changeAdminQty(i, d) {
+            adminCart[i].qty += d;
+            if(adminCart[i].qty < 1) adminCart.splice(i, 1);
+            updateAdminCartUI();
+        }
+
+        async function saveAndSendAdminOrder() {
+            const name = document.getElementById('admin-cust-name').value.trim();
+            if(!name || adminCart.length === 0) return alert("Enter customer name and items.");
+            
+            const itemsData = adminCart.map(it => ({ name: it.name, qty: it.qty, status: 'Pending' }));
+            const itemsText = JSON.stringify(itemsData);
+            const total = adminCart.reduce((s,i) => s + (i.price*i.qty), 0);
+            
+            const { error } = await _supabase.from('orders').insert([{ 
+                customer_name: name, 
+                item_name: itemsText, 
+                quantity: adminCart.reduce((s,i) => s + i.qty, 0), 
+                status: 'Pending', 
+                total_bill: total,
+                created_by: 'ADMIN',
+                table_number: 'Admin/Internal'
+            }]);
+            
+            if(!error) {
+                adminCart = []; 
+                document.getElementById('admin-cust-name').value = '';
+                toggleAdminBasket(false); 
+                fetchOrders();
+            }
+        }
+
+        function processNotifications(newList) {
+            newList.forEach(order => {
+                const oldOrder = orders.find(o => o.id === order.id);
+                const eventKey = `${order.id}-${order.status}`;
+                if (notifiedEvents.has(eventKey)) return;
+
+                if (isStaffLoggedIn && !oldOrder) {
+                    sounds.newOrder.play().catch(() => {});
+                    notifiedEvents.add(eventKey);
+                }
+
+                if (!isAdminLoggedIn && !isStaffLoggedIn && order.device_id === DEVICE_ID) {
+                    if (oldOrder && oldOrder.status !== 'Cancelled' && order.status === 'Cancelled' && order.cancelled_by === 'Admin') {
+                        sounds.adminCancelled.play().catch(() => {});
+                        const b = document.getElementById('cancel-banner'); b.classList.remove('hidden'); setTimeout(()=>b.classList.add('hidden'), 5000);
+                        notifiedEvents.add(eventKey);
+                    }
+                    else if (oldOrder && oldOrder.status === 'Pending' && order.status === 'Ready') {
+                        sounds.orderReady.play().catch(() => {});
+                        const b = document.getElementById('ready-banner'); b.classList.remove('hidden'); setTimeout(()=>b.classList.add('hidden'), 4000);
+                        notifiedEvents.add(eventKey);
+                    }
+                }
+            });
+        }
+
+        async function sendOrder() {
+            const name = document.getElementById('cust-name').value.trim();
+            const tableNum = document.getElementById('table-number').value;
+            if(!name || !tableNum || cart.length === 0) return alert("Please enter name, select a table, and add items.");
+            
+            const itemsData = cart.map(it => ({ 
+                name: it.name, 
+                qty: it.qty, 
+                note: it.note || '', 
+                status: 'Pending' 
+            }));
+            const itemsText = JSON.stringify(itemsData);
+
+            const { error } = await _supabase.from('orders').insert([{ 
+                customer_name: name, 
+                item_name: itemsText, 
+                quantity: cart.reduce((s,i) => s + i.qty, 0), 
+                status: 'Pending',
+                device_id: DEVICE_ID,
+                total_bill: cart.reduce((s,i) => s + (i.price*i.qty), 0),
+                table_number: tableNum
+            }]);
+            if (!error) {
+                sounds.orderSent.play().catch(()=>{}); cart = []; updateUI(); toggleCart(false);
+                document.getElementById('cust-name').value = '';
+                document.getElementById('table-number').value = '';
+                document.getElementById('order-sent-banner').classList.remove('hidden'); 
+                setTimeout(()=>document.getElementById('order-sent-banner').classList.add('hidden'), 3000);
+                fetchOrders();
+            }
+        }
+
+        async function updateOrderStatus(id, s, role) { 
+            const updateData = { status: s };
+            if (s === 'Cancelled') updateData.cancelled_by = role === 'staff' ? 'Admin' : 'Customer';
+            await _supabase.from('orders').update(updateData).eq('id', id); 
+            fetchOrders(); 
+        }
+
+        async function setStaffItemStatus(orderId, itemIndex, newStatus) {
+            const order = orders.find(o => o.id === orderId);
+            if(!order) return;
+            
+            let items = [];
+            try { items = JSON.parse(order.item_name); } catch(e) { return; }
+            
+            items[itemIndex].status = newStatus;
+            
+            await _supabase.from('orders').update({
+                item_name: JSON.stringify(items)
+            }).eq('id', orderId);
+            fetchOrders();
+        }
+
+        function renderStaffOrders() {
+            const active = orders.filter(o => o.status === 'Pending');
+            const list = document.getElementById('staff-orders-list');
+            list.innerHTML = active.map(o => {
+                let items = [];
+                try { items = JSON.parse(o.item_name); } catch(e) { 
+                    items = o.item_name.split(', ').map(s => ({ name: s, qty: '?', status: 'Pending' })); 
+                }
+
+                return `
+                <div class="bg-white p-6 rounded-[32px] border border-zinc-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade">
+                    <div class="flex-grow w-full">
+                        <div class="flex items-center gap-2 mb-2">
+                             <span class="text-[10px] font-black px-2 py-1 bg-zinc-100 rounded-lg">#ORD-${o.id}</span>
+                             <span class="text-[10px] font-black px-2 py-1 bg-orange-100 text-orange-600 rounded-lg uppercase">${o.table_number || 'No Table'}</span>
+                        </div>
+                        <h4 class="text-xl font-black mb-1">${o.customer_name}</h4>
+                        <div class="space-y-2 mb-4">
+                            ${items.map((it, idx) => `
+                                <div class="flex items-center justify-between bg-zinc-50 p-3 rounded-xl border border-zinc-100">
+                                    <div>
+                                        <span class="text-lg font-bold text-zinc-800">${it.name} x${it.qty}</span>
+                                        <span class="ml-2 text-[10px] font-black uppercase ${it.status === 'Accepted' ? 'text-green-500' : it.status === 'Rejected' ? 'text-red-500' : 'text-zinc-400'}">${it.status}</span>
+                                    </div>
+                                    <div class="flex gap-1">
+                                        <button onclick="setStaffItemStatus(${o.id}, ${idx}, 'Accepted')" class="w-8 h-8 bg-green-500 text-white rounded-lg flex items-center justify-center font-bold">✔</button>
+                                        <button onclick="setStaffItemStatus(${o.id}, ${idx}, 'Rejected')" class="w-8 h-8 bg-red-500 text-white rounded-lg flex items-center justify-center font-bold">✖</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <p class="text-sm font-black text-zinc-400 uppercase tracking-widest">Total: ₹${o.total_bill}</p>
+                    </div>
+                    <div class="flex gap-2 w-full md:w-auto">
+                        <button onclick="updateOrderStatus(${o.id}, 'Ready', 'staff')" class="flex-1 md:flex-none bg-zinc-900 text-white px-8 py-5 rounded-2xl font-bold text-xs uppercase shadow-xl">Ready</button>
+                        <button onclick="updateOrderStatus(${o.id}, 'Cancelled', 'staff')" class="flex-1 md:flex-none bg-red-50 text-red-600 px-6 py-5 rounded-2xl font-bold text-xs uppercase">Cancel</button>
+                    </div>
+                </div>
+            `}).join('');
+        }
+
+        function renderAdminBills() {
+            const readyToPrint = orders.filter(o => o.status === 'Ready');
+            const list = document.getElementById('admin-bills-list');
+            list.innerHTML = readyToPrint.map(o => {
+                let items = [];
+                try { items = JSON.parse(o.item_name); } catch(e) { items = o.item_name.split(', ').map(s => ({ name: s })); }
+                
+                return `
+                <div class="bg-white p-6 rounded-[32px] border border-zinc-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center animate-fade gap-4">
+                    <div class="flex-grow">
+                        <div class="flex items-center gap-2 mb-1">
+                            <h4 class="text-lg font-black">${o.customer_name}</h4>
+                            <span class="text-[9px] font-black bg-zinc-900 text-white px-2 py-0.5 rounded-full uppercase">${o.table_number || ''}</span>
+                        </div>
+                        <div class="mt-2 space-y-1">
+                            ${items.map(it => `<p class="text-sm font-bold uppercase text-zinc-600">• ${it.name} ${it.qty ? `x${it.qty}` : ''}</p>`).join('')}
+                        </div>
+                        <p class="text-2xl font-black mt-3 text-zinc-900">₹${o.total_bill}</p>
+                    </div>
+                    <button onclick="completeOrder(${o.id})" class="w-full sm:w-auto bg-green-600 text-white px-10 py-5 rounded-2xl font-bold text-xs uppercase shadow-lg">Done</button>
+                </div>
+            `}).join('');
+        }
+
+        async function completeOrder(orderId) {
+            await _supabase.from('orders').update({ status: 'Completed' }).eq('id', orderId);
+            fetchOrders();
+        }
+
+        function renderCustomerStatus() {
+            const active = orders.filter(o => (o.status !== 'Completed' && o.status !== 'Cancelled') && o.device_id === DEVICE_ID && o.created_by !== 'ADMIN');
+            const statusBox = document.getElementById('customer-order-status');
+            
+            if (active.length === 0) {
+                if (!statusBox.classList.contains('hidden')) {
+                    statusBox.classList.add('hidden');
+                    lastStatusHTML = "";
+                }
+                return;
+            }
+
+            statusBox.classList.remove('hidden');
+            
+            const newHTML = active.map(o => {
+                let items = [];
+                try { items = JSON.parse(o.item_name); } catch(e) { items = []; }
+
+                return `
+                <div class="bg-white border p-6 rounded-[32px] flex flex-col gap-4 shadow-sm" data-id="${o.id}">
+                    <div class="flex justify-between items-center border-b pb-4">
+                        <div>
+                            <p class="text-[10px] font-black text-zinc-400 uppercase">#ORD-${o.id} • ${o.table_number || ''}</p>
+                            <p class="font-bold text-sm text-zinc-800">${o.customer_name}, order is ${o.status}</p>
+                        </div>
+                        <span class="px-4 py-2 rounded-full text-[10px] font-black uppercase ${o.status === 'Ready' ? 'bg-green-100 text-green-600 animate-pulse' : 'bg-orange-100 text-orange-600'}">${o.status}</span>
+                    </div>
+                    <div class="space-y-3">
+                        ${items.map(it => `
+                            <div class="flex justify-between items-center">
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-bold">${it.name}</span>
+                                    <span class="text-[10px] text-zinc-400 font-black uppercase">Qty: ${it.qty}</span>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-[10px] font-black uppercase ${it.status === 'Accepted' ? 'text-green-500' : it.status === 'Rejected' ? 'text-red-500' : 'text-zinc-300'}">${it.status}</span>
+                                    ${it.status === 'Accepted' ? '<span class="text-green-500">✔</span>' : it.status === 'Rejected' ? '<span class="text-red-500">✖</span>' : ''}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="pt-4 border-t flex justify-between items-center">
+                        <span class="text-[10px] font-black uppercase text-zinc-400">Total Bill</span>
+                        <span class="text-xl font-black">₹${o.total_bill}</span>
+                    </div>
+                </div>
+            `}).join('');
+
+            if (newHTML !== lastStatusHTML) {
+                document.getElementById('status-list').innerHTML = newHTML;
+                lastStatusHTML = newHTML;
+            }
+        }
+
+        function renderMenu(items) {
+            document.getElementById('menu-grid').innerHTML = items.map(item => `
+                <div class="item-card bg-white rounded-[32px] p-4 border border-zinc-100 shadow-sm animate-fade ${!item.is_available ? 'opacity-50 grayscale' : ''}">
+                    <img src="${item.image_url}" class="h-48 w-full object-cover rounded-[24px] mb-4">
+                    <div class="px-2">
+                        <p class="text-[10px] font-bold text-orange-500 uppercase mb-1">${item.category}</p>
+                        <h3 class="font-extrabold text-lg text-zinc-900 mb-4">${item.name}</h3>
+                        <div class="flex justify-between items-center"><span class="text-xl font-bold">₹${item.price}</span>
+                        ${item.is_available ? `<button onclick="addToCart(${item.id})" class="h-12 w-12 bg-zinc-900 text-white rounded-2xl flex items-center justify-center shadow-lg">+</button>` : `<span class="text-[10px] font-black text-red-500 border border-red-100 px-3 py-1 rounded-full bg-red-50 uppercase">Sold Out</span>`}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function addToCart(id) {
+            const item = menuData.find(m => m.id === id);
+            const exist = cart.find(c => c.id === id);
+            if(exist) exist.qty++; else cart.push({...item, qty: 1, note: ''});
+            updateUI();
+            const pop = document.getElementById('silent-popup'); pop.classList.remove('hidden'); setTimeout(()=>pop.classList.add('hidden'), 2000);
+        }
+
+        function updateUI() {
+            document.getElementById('cart-count').innerText = cart.reduce((s,i) => s + i.qty, 0);
+            document.getElementById('cart-content').innerHTML = cart.map((item, i) => `
+                <div class="flex flex-col gap-4 border-b border-zinc-50 pb-6">
+                    <div class="flex gap-4 items-center">
+                        <img src="${item.image_url}" class="w-16 h-16 rounded-2xl object-cover shadow-sm">
+                        <div class="flex-grow"><h4 class="font-bold text-sm">${item.name}</h4><p class="text-[10px] font-black">₹${item.price * item.qty}</p></div>
+                        <div class="flex items-center gap-2"><button onclick="changeQty(${i},-1)" class="w-6 h-6 bg-zinc-100 rounded">-</button><span class="text-xs font-bold">${item.qty}</span><button onclick="changeQty(${i},1)" class="w-6 h-6 bg-zinc-900 text-white rounded">+</button></div>
+                    </div>
+                    <input type="text" placeholder="Extra info" onchange="cart[${i}].note=this.value" value="${item.note || ''}" class="bg-zinc-100 p-2 rounded-xl text-[10px] font-bold outline-none">
+                </div>
+            `).join('');
+            document.getElementById('cart-total-price').innerText = `₹${cart.reduce((s,i) => s + (i.price*i.qty), 0)}`;
+        }
+
+        function checkRoute() {
+            const h = window.location.hash;
+            isAdminLoggedIn = (h === '#admin' && isAdminLoggedIn);
+            isStaffLoggedIn = (h === '#staff' && isStaffLoggedIn);
+            document.getElementById('customer-panel').classList.toggle('hidden', h === '#admin' || h === '#staff');
+            document.getElementById('admin-login-panel').classList.toggle('hidden', h !== '#admin' || isAdminLoggedIn);
+            document.getElementById('admin-panel').classList.toggle('hidden', h !== '#admin' || !isAdminLoggedIn);
+            document.getElementById('staff-login-panel').classList.toggle('hidden', h !== '#staff' || isStaffLoggedIn);
+            document.getElementById('staff-panel').classList.toggle('hidden', h !== '#staff' || !isStaffLoggedIn);
+            document.getElementById('cart-trigger-btn').classList.toggle('hidden', h === '#admin' || h === '#staff');
+            if(isAdminLoggedIn) { renderAdminBills(); renderAdminMenu(); }
+            if(isStaffLoggedIn) { renderStaffOrders(); }
+        }
+
+        function handleLogin(role) {
+            if (role === 'admin') {
+                if (document.getElementById('admin-id').value === 'admin' && document.getElementById('admin-pass').value === '1234') {
+                    isAdminLoggedIn = true; checkRoute();
+                } else alert("Wrong Pass");
+            } else if (role === 'staff') {
+                if (document.getElementById('staff-id').value === 'staff' && document.getElementById('staff-pass').value === '1234') {
+                    isStaffLoggedIn = true; checkRoute();
+                } else alert("Wrong Pass");
+            }
+        }
+
+        function changeQty(i, d) { cart[i].qty += d; if(cart[i].qty < 1) cart.splice(i, 1); updateUI(); }
+        function toggleCart(s) { if(s && (window.location.hash === '#admin' || window.location.hash === '#staff')) return; document.getElementById('cart-sidebar-overlay').classList.toggle('hidden', !s); document.getElementById('cart-sidebar').style.transform = s ? 'translateX(0)' : 'translateX(100%)'; }
+        function renderCategoryBar() { const cats = ['All', ...new Set(menuData.map(m => m.category))]; document.getElementById('category-bar').innerHTML = cats.map(c => `<button onclick="filterMenu('${c}')" class="cat-btn ${c==='All'?'active-cat':''} px-6 py-2 rounded-full bg-white font-bold shadow-sm border whitespace-nowrap">${c}</button>`).join(''); }
+        function filterMenu(c) { document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active-cat')); event.target.classList.add('active-cat'); renderMenu(c === 'All' ? menuData : menuData.filter(m => m.category === c)); }
+        function switchAdminTab(tab) { document.getElementById('admin-bills-sec').classList.toggle('hidden', tab !== 'bills'); document.getElementById('admin-menu-sec').classList.toggle('hidden', tab !== 'menu'); document.getElementById('tab-bills').className = tab === 'bills' ? 'px-6 py-2 rounded-full bg-zinc-900 text-white font-bold text-sm' : 'px-6 py-2 rounded-full bg-zinc-100 text-zinc-400 font-bold text-sm'; document.getElementById('tab-menu').className = tab === 'menu' ? 'px-6 py-2 rounded-full bg-zinc-900 text-white font-bold text-sm' : 'px-6 py-2 rounded-full bg-zinc-100 text-zinc-400 font-bold text-sm'; }
+        async function updateMenuField(id, field, value) { await _supabase.from('menu_items').update({ [field]: value }).eq('id', id); fetchMenu(); }
+        function renderAdminMenu() { document.getElementById('admin-menu-list').innerHTML = menuData.map(item => `<div class="bg-white p-5 rounded-3xl border border-zinc-100 shadow-sm flex items-center justify-between"><div class="flex items-center gap-4"><img src="${item.image_url}" class="w-16 h-16 rounded-2xl object-cover"><div><h4 class="font-bold text-zinc-900">${item.name}</h4><p class="text-xs text-zinc-400">₹${item.price}</p></div></div><div class="flex gap-2"><button onclick="const p=prompt('New Price:', ${item.price}); if(p) updateMenuField(${item.id}, 'price', parseInt(p))" class="px-4 py-2 bg-zinc-100 rounded-xl text-[10px] font-black uppercase">Rate</button><button onclick="updateMenuField(${item.id}, 'is_available', ${!item.is_available})" class="px-4 py-2 ${item.is_available ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'} rounded-xl text-[10px] font-black uppercase">${item.is_available ? 'Live' : 'Hidden'}</button></div></div>`).join(''); }
+    </script>
+</body>
+</html>
