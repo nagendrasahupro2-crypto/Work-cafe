@@ -349,10 +349,14 @@
             const tableNum = document.getElementById('table-number').value;
             if(!name || !tableNum || cart.length === 0) return alert("Please enter name, select a table, and add items.");
             
-        const itemsText = cart.map(it => it.name).join(', ');
-        const totalQty = cart.reduce((s,i) => s + i.qty, 0);
-        const totalBill = cart.reduce((s,i) => s + (i.price*i.qty), 0);
-        
+            const itemsData = cart.map(it => ({ 
+                name: it.name, 
+                qty: it.qty, 
+                note: it.note || '', 
+                status: 'Pending' 
+            }));
+            const itemsText = JSON.stringify(itemsData);
+
             const { error } = await _supabase.from('orders').insert([{ 
                 customer_name: name, 
                 item_name: itemsText, 
