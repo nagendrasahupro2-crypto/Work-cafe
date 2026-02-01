@@ -296,8 +296,7 @@
             const name = document.getElementById('admin-cust-name').value.trim();
             if(!name || adminCart.length === 0) return alert("Enter customer name and items.");
             
-            const itemsData = adminCart.map(it => ({ name: it.name, qty: it.qty, status: 'Pending' }));
-            const itemsText = JSON.stringify(itemsData);
+           const itemsText = adminCart.map(it => `${it.name} x${it.qty}`).join(', ');
             const total = adminCart.reduce((s,i) => s + (i.price*i.qty), 0);
             
             const { error } = await _supabase.from('orders').insert([{ 
