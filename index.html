@@ -197,42 +197,30 @@
             }
         }
 
-        async function fetchOrders() {
-            const { data, error } = await _supabase.from('orders').select('*').order('id', { ascending: false });
-            if (!error && data) {
-                const dataString = JSON.stringify(data);
-                if (dataString !== lastKnownOrderData) {
-                    orders = data;
-                    lastKnownOrderData = dataString;
-                    renderCustomerStatus();
-                    if(isAdminLoggedIn) renderAdminBills();
-                    if(isStaffLoggedIn) renderStaffOrders();
-                }
+let previousOrderCount = 0; // Global variable banayein top pe
+
+async function fetchOrders() {
+    const { data, error } = await _supabase.from('orders').select('*').order('id', { ascending: false });
+    if (!error && data) {
+        const dataString = JSON.stringify(data);
+        if (dataString !== lastKnownOrderData) {
+            
+            // --- Naya Logic: Agar Staff Logged In hai aur Orders badh gaye hain ---
+            if (isStaffLoggedIn && data.length > previousOrderCount && previousOrderCount !== 0) {
+                playStaffNotification(); // Notification function call karein
             }
+            previousOrderCount = data.length;
+            // ------------------------------------------------------------------
+
+            orders = data;
+            lastKnownOrderData = dataString;
+            renderCustomerStatus();
+            if(isAdminLoggedIn) renderAdminBills();
+            if(isStaffLoggedIn) renderStaffOrders();
         }
+    }
+}
 
-        // --- Logic Changes Start Here ---
-
-        async function setStaffItemStatus(orderId, itemIndex, newStatus) {
-            const order = orders.find(o => o.id === orderId);
-            if(!order) return;
-            
-            let items = [];
-            try { items = JSON.parse(order.item_name); } catch(e) { return; }
-            
-            items[itemIndex].status = newStatus;
-
-            // Recalculate Total Bill: Only include prices of Accepted or Pending items.
-            // Requirement: "Total bill should always be calculated only from ACCEPTED items."
-            // We interpret this as: Accepted items + Pending (to be decided). Rejected = 0.
-            let newTotal = 0;
-            items.forEach(it => {
-                if (it.status !== 'Rejected') {
-                    const menuItem = menuData.find(m => m.name === it.name);
-                    const price = menuItem ? menuItem.price : 0;
-                    newTotal += (price * it.qty);
-                }
-            });
             
             await _supabase.from('orders').update({
                 item_name: JSON.stringify(items),
@@ -358,6 +346,27 @@
             await _supabase.from('orders').update({ status: s }).eq('id', id); 
             fetchOrders(); 
         }
+        
+        function playStaffNotification() {
+    // 1. Sound Play Karein
+    sounds.orderSent.play().catch(e => console.log("Sound blocked by browser interaction policy"));
+
+    // 2. Ek Visual Alert dikhayein (Optional)
+    const banner = document.getElementById('order-sent-banner');
+    const bannerText = banner.querySelector('p.font-bold');
+    const bannerSub = banner.querySelector('p.text-zinc-400');
+    
+    bannerText.innerText = "NEW ORDER RECEIVED!";
+    bannerSub.innerText = "Check the list immediately.";
+    banner.classList.remove('hidden');
+    
+    setTimeout(() => {
+        banner.classList.add('hidden');
+        // Wapas text normal kar dein customer ke liye
+        bannerText.innerText = "Order Sent!";
+        bannerSub.innerText = "Kitchen has received your request.";
+    }, 5000);
+}
 
         function renderAdminBills() {
             const readyToPrint = orders.filter(o => o.status === 'Ready');
