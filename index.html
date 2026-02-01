@@ -349,8 +349,11 @@
             const tableNum = document.getElementById('table-number').value;
             if(!name || !tableNum || cart.length === 0) return alert("Please enter name, select a table, and add items.");
             
-             const itemsText = cart.map(it => `${it.name} x${it.qty}${it.note ? ` (${it.note})` : ''}`).join(', ');
-             const { error } = await _supabase.from('orders').insert([{ 
+        const itemsText = cart.map(it => it.name).join(', ');
+        const totalQty = cart.reduce((s,i) => s + i.qty, 0);
+        const totalBill = cart.reduce((s,i) => s + (i.price*i.qty), 0);
+        
+            const { error } = await _supabase.from('orders').insert([{ 
                 customer_name: name, 
                 item_name: itemsText, 
                 quantity: cart.reduce((s,i) => s + i.qty, 0), 
