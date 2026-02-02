@@ -171,8 +171,11 @@
         let isStaffLoggedIn = false;
         let lastKnownOrderData = "";
         let lastStatusHTML = ""; 
+        
+        // Audio Notification Logic
+        let lastStaffOrderCount = -1; 
+        const staffNotifySound = new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3');
 
-        // Notification sounds removed per requirement
         const sounds = {
             orderSent: new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3')
         };
@@ -197,30 +200,57 @@
             }
         }
 
-let previousOrderCount = 0; // Global variable banayein top pe
+        async function fetchOrders() {
+            const { data, error } = await _supabase.from('orders').select('*').order('id', { ascending: false });
+            if (!error && data) {
+                const dataString = JSON.stringify(data);
+                if (dataString !== lastKnownOrderData) {
+                    
+                    // Logic to detect new orders for staff
+                    const currentPendingOrders = data.filter(o => o.status === 'Pending');
+                    if (isStaffLoggedIn) {
+                        // If count increases, play sound for 3 seconds
+                        if (lastStaffOrderCount !== -1 && currentPendingOrders.length > lastStaffOrderCount) {
+                            playStaffNotification();
+                        }
+                        lastStaffOrderCount = currentPendingOrders.length;
+                    }
 
-async function fetchOrders() {
-    const { data, error } = await _supabase.from('orders').select('*').order('id', { ascending: false });
-    if (!error && data) {
-        const dataString = JSON.stringify(data);
-        if (dataString !== lastKnownOrderData) {
-            
-            // --- Naya Logic: Agar Staff Logged In hai aur Orders badh gaye hain ---
-            if (isStaffLoggedIn && data.length > previousOrderCount && previousOrderCount !== 0) {
-                playStaffNotification(); // Notification function call karein
+                    orders = data;
+                    lastKnownOrderData = dataString;
+                    renderCustomerStatus();
+                    if(isAdminLoggedIn) renderAdminBills();
+                    if(isStaffLoggedIn) renderStaffOrders();
+                }
             }
-            previousOrderCount = data.length;
-            // ------------------------------------------------------------------
-
-            orders = data;
-            lastKnownOrderData = dataString;
-            renderCustomerStatus();
-            if(isAdminLoggedIn) renderAdminBills();
-            if(isStaffLoggedIn) renderStaffOrders();
         }
-    }
-}
 
+        function playStaffNotification() {
+            staffNotifySound.currentTime = 0;
+            staffNotifySound.play().catch(e => console.log("Audio play blocked by browser. User interaction required."));
+            setTimeout(() => {
+                staffNotifySound.pause();
+                staffNotifySound.currentTime = 0;
+            }, 3000);
+        }
+
+        async function setStaffItemStatus(orderId, itemIndex, newStatus) {
+            const order = orders.find(o => o.id === orderId);
+            if(!order) return;
+            
+            let items = [];
+            try { items = JSON.parse(order.item_name); } catch(e) { return; }
+            
+            items[itemIndex].status = newStatus;
+
+            let newTotal = 0;
+            items.forEach(it => {
+                if (it.status !== 'Rejected') {
+                    const menuItem = menuData.find(m => m.name === it.name);
+                    const price = menuItem ? menuItem.price : 0;
+                    newTotal += (price * it.qty);
+                }
+            });
             
             await _supabase.from('orders').update({
                 item_name: JSON.stringify(items),
@@ -313,8 +343,6 @@ async function fetchOrders() {
             }
         }
 
-        // --- Standard Logic Maintained ---
-
         async function sendOrder() {
             const name = document.getElementById('cust-name').value.trim();
             const tableNum = document.getElementById('table-number').value;
@@ -346,27 +374,6 @@ async function fetchOrders() {
             await _supabase.from('orders').update({ status: s }).eq('id', id); 
             fetchOrders(); 
         }
-        
-        function playStaffNotification() {
-    // 1. Sound Play Karein
-    sounds.orderSent.play().catch(e => console.log("Sound blocked by browser interaction policy"));
-
-    // 2. Ek Visual Alert dikhayein (Optional)
-    const banner = document.getElementById('order-sent-banner');
-    const bannerText = banner.querySelector('p.font-bold');
-    const bannerSub = banner.querySelector('p.text-zinc-400');
-    
-    bannerText.innerText = "NEW ORDER RECEIVED!";
-    bannerSub.innerText = "Check the list immediately.";
-    banner.classList.remove('hidden');
-    
-    setTimeout(() => {
-        banner.classList.add('hidden');
-        // Wapas text normal kar dein customer ke liye
-        bannerText.innerText = "Order Sent!";
-        bannerSub.innerText = "Kitchen has received your request.";
-    }, 5000);
-}
 
         function renderAdminBills() {
             const readyToPrint = orders.filter(o => o.status === 'Ready');
@@ -397,7 +404,6 @@ async function fetchOrders() {
             fetchOrders();
         }
 
-        // --- Unchanged View and UI Helpers ---
         function toggleAdminBasket(s) { const overlay = document.getElementById('admin-basket-overlay'); const sidebar = document.getElementById('admin-basket-sidebar'); overlay.classList.toggle('hidden', !s); sidebar.style.transform = s ? 'translateX(0)' : 'translateX(100%)'; if(s) { adminCart = []; updateAdminCartUI(); renderAdminInternalTabs(); renderAdminInternalMenu('All'); } }
         function renderAdminInternalTabs() { const cats = ['All', ...new Set(menuData.map(m => m.category))]; document.getElementById('admin-basket-tabs').innerHTML = cats.map(c => `<button onclick="renderAdminInternalMenu('${c}')" class="px-4 py-1 rounded-full bg-white border text-[10px] font-bold whitespace-nowrap active:bg-zinc-900 active:text-white transition-colors uppercase tracking-wider">${c}</button>`).join(''); }
         function renderAdminInternalMenu(cat) { const filtered = cat === 'All' ? menuData : menuData.filter(m => m.category === cat); document.getElementById('admin-internal-menu').innerHTML = filtered.map(item => `<div class="flex items-center justify-between bg-zinc-50 p-4 rounded-xl border border-zinc-100 mb-1"><div><p class="text-sm font-bold text-zinc-800">${item.name}</p><p class="text-[10px] text-zinc-400 font-bold uppercase">₹${item.price}</p></div><button onclick="addToAdminCart(${item.id})" class="h-9 w-9 bg-zinc-900 text-white rounded-xl font-bold flex items-center justify-center shadow-md active:scale-90">+</button></div>`).join(''); }
