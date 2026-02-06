@@ -467,7 +467,26 @@ function toggleStatusSidebar(s) {
         function renderMenu(items) { document.getElementById('menu-grid').innerHTML = items.map(item => `<div class="item-card bg-white rounded-[32px] p-4 border border-zinc-100 shadow-sm animate-fade ${!item.is_available ? 'opacity-50 grayscale' : ''}"><img src="${item.image_url}" class="h-48 w-full object-cover rounded-[24px] mb-4"><div class="px-2"><p class="text-[10px] font-bold text-orange-500 uppercase mb-1">${item.category}</p><h3 class="font-extrabold text-lg text-zinc-900 mb-4">${item.name}</h3><div class="flex justify-between items-center"><span class="text-xl font-bold">₹${item.price}</span>${item.is_available ? `<button onclick="addToCart(${item.id})" class="h-12 w-12 bg-zinc-900 text-white rounded-2xl flex items-center justify-center shadow-lg">+</button>` : `<span class="text-[10px] font-black text-red-500 border border-red-100 px-3 py-1 rounded-full bg-red-50 uppercase">Sold Out</span>`}</div></div></div>`).join(''); }
         function addToCart(id) { const item = menuData.find(m => m.id === id); const exist = cart.find(c => c.id === id); if(exist) exist.qty++; else cart.push({...item, qty: 1, note: ''}); updateUI(); const pop = document.getElementById('silent-popup'); pop.classList.remove('hidden'); setTimeout(()=>pop.classList.add('hidden'), 2000); }
         function updateUI() { document.getElementById('cart-count').innerText = cart.reduce((s,i) => s + i.qty, 0); document.getElementById('cart-content').innerHTML = cart.map((item, i) => `<div class="flex flex-col gap-4 border-b border-zinc-50 pb-6"><div class="flex gap-4 items-center"><img src="${item.image_url}" class="w-16 h-16 rounded-2xl object-cover shadow-sm"><div class="flex-grow"><h4 class="font-bold text-sm">${item.name}</h4><p class="text-[10px] font-black">₹${item.price * item.qty}</p></div><div class="flex items-center gap-2"><button onclick="changeQty(${i},-1)" class="w-6 h-6 bg-zinc-100 rounded">-</button><span class="text-xs font-bold">${item.qty}</span><button onclick="changeQty(${i},1)" class="w-6 h-6 bg-zinc-900 text-white rounded">+</button></div></div><input type="text" placeholder="Extra info" onchange="cart[${i}].note=this.value" value="${item.note || ''}" class="bg-zinc-100 p-2 rounded-xl text-[10px] font-bold outline-none"></div>`).join(''); document.getElementById('cart-total-price').innerText = `₹${cart.reduce((s,i) => s + (i.price*i.qty), 0)}`; }
-        function checkRoute() { const h = window.location.hash; isAdminLoggedIn = (h === '#admin' && isAdminLoggedIn); isStaffLoggedIn = (h === '#staff' && isStaffLoggedIn); document.getElementById('customer-panel').classList.toggle('hidden', h === '#admin' || h === '#staff'); document.getElementById('admin-login-panel').classList.toggle('hidden', h !== '#admin' || isAdminLoggedIn); document.getElementById('admin-panel').classList.toggle('hidden', h !== '#admin' || !isAdminLoggedIn); document.getElementById('staff-login-panel').classList.toggle('hidden', h !== '#staff' || isStaffLoggedIn); document.getElementById('staff-panel').classList.toggle('hidden', h !== '#staff' || !isStaffLoggedIn); document.getElementById('cart-trigger-btn').classList.toggle('hidden', h === '#admin' || h === '#staff'); if(isAdminLoggedIn) { renderAdminBills(); renderAdminMenu(); } if(isStaffLoggedIn) { renderStaffOrders(); } }
+function checkRoute() {
+    const h = window.location.hash;
+    isAdminLoggedIn = (h === '#admin' && isAdminLoggedIn);
+    isStaffLoggedIn = (h === '#staff' && isStaffLoggedIn);
+
+    // Ye line ensure karegi ki 'My Orders' button sirf customer panel pe dikhe
+    const isUserPage = (h !== '#admin' && h !== '#staff');
+    document.getElementById('status-trigger-btn').classList.toggle('hidden', !isUserPage);
+    document.getElementById('cart-trigger-btn').classList.toggle('hidden', !isUserPage);
+
+    // Baki panels ka logic (Waisa hi rahega)
+    document.getElementById('customer-panel').classList.toggle('hidden', !isUserPage);
+    document.getElementById('admin-login-panel').classList.toggle('hidden', h !== '#admin' || isAdminLoggedIn);
+    document.getElementById('admin-panel').classList.toggle('hidden', h !== '#admin' || !isAdminLoggedIn);
+    document.getElementById('staff-login-panel').classList.toggle('hidden', h !== '#staff' || isStaffLoggedIn);
+    document.getElementById('staff-panel').classList.toggle('hidden', h !== '#staff' || !isStaffLoggedIn);
+
+    if(isAdminLoggedIn) { renderAdminBills(); renderAdminMenu(); }
+    if(isStaffLoggedIn) { renderStaffOrders(); }
+}
         function handleLogin(role) { if (role === 'admin') { if (document.getElementById('admin-id').value === 'admin' && document.getElementById('admin-pass').value === '1234') { isAdminLoggedIn = true; checkRoute(); } else alert("Wrong Pass"); } else if (role === 'staff') { if (document.getElementById('staff-id').value === 'staff' && document.getElementById('staff-pass').value === '1234') { isStaffLoggedIn = true; checkRoute(); } else alert("Wrong Pass"); } }
         function changeQty(i, d) { cart[i].qty += d; if(cart[i].qty < 1) cart.splice(i, 1); updateUI(); }
         function toggleCart(s) { if(s && (window.location.hash === '#admin' || window.location.hash === '#staff')) return; document.getElementById('cart-sidebar-overlay').classList.toggle('hidden', !s); document.getElementById('cart-sidebar').style.transform = s ? 'translateX(0)' : 'translateX(100%)'; }
