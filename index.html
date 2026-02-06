@@ -315,6 +315,9 @@ function renderCustomerStatus() {
         let items = [];
         try { items = JSON.parse(o.item_name); } catch(e) { items = []; }
 
+        // UPI Link logic
+        const upiLink = `upi://pay?pa=nagusahu1209@okaxis&pn=Lalla%20Sahu&am=${o.total_bill}&cu=INR&mode=02&purpose=00`;
+
         return `
         <div class="bg-white border p-6 rounded-[32px] flex flex-col gap-4 shadow-sm animate-fade">
             <div class="flex justify-between items-start">
@@ -332,11 +335,9 @@ function renderCustomerStatus() {
             
             ${o.status === 'Ready' ? `
                 <div class="space-y-2 mt-2">
-                
-          <button onclick="triggerUPI('upi://pay?pa=nagusahu1209@okaxis&pn=Lalla%20Sahu&am=${o.total_bill}&cu=INR')" 
-         class="block w-full text-center bg-green-600 text-white py-3 rounded-2xl font-bold shadow-lg shadow-green-200">
-          Pay Now (₹${o.total_bill})
-        </button>
+                    <button onclick="triggerUPI('${upiLink}')" class="block w-full text-center bg-green-600 text-white py-3 rounded-2xl font-bold shadow-lg shadow-green-200">
+                        Pay Now (₹${o.total_bill})
+                    </button>
                     
                     ${o.payment_status !== 'paid' ? `
                         <button onclick="markPaymentPaid(${o.id})" class="w-full text-center bg-zinc-100 text-zinc-600 py-3 rounded-2xl font-black text-[10px] uppercase border border-dashed border-zinc-300">
@@ -390,22 +391,23 @@ function renderCustomerStatus() {
             }
         }
 
-        async function updateOrderStatus(id, s, role) {
-  if (s === 'Ready') {
-    const order = orders.find(o => o.id === id);
-    if (!order) return;
+async function updateOrderStatus(id, s, role) {
+    if (s === 'Ready') {
+        const order = orders.find(o => o.id === id);
+        if (!order) return;
 
-const upiLink = `upi://pay?pa=nagusahu1209@okaxis&pn=Lalla%20Sahu&am=${order.total_bill}&cu=INR`;
+        // Correct String Template
+        const upiLink = `upi://pay?pa=nagusahu1209@okaxis&pn=Lalla%20Sahu&am=${order.total_bill}&cu=INR`;
 
-    await _supabase.from('orders').update({
-      status: 'Ready',
-      payment_status: 'pending',
-      payment_link: upiLink
-    }).eq('id', id);
-  } else {
-    await _supabase.from('orders').update({ status: s }).eq('id', id);
-  }
- fetchOrders()
+        await _supabase.from('orders').update({
+            status: 'Ready',
+            payment_status: 'pending',
+            payment_link: upiLink
+        }).eq('id', id);
+    } else {
+        await _supabase.from('orders').update({ status: s }).eq('id', id);
+    }
+    fetchOrders();
 }
 
 function renderAdminBills() {
@@ -469,12 +471,16 @@ function toggleStatusSidebar(s) {
     if(s) fetchOrders(); // Open hote hi refresh karein
 }
 
-function triggerUPI(link) {
-    // Direct location assignment mobile apps trigger karne ke liye better hai
-    window.location.href = link;
-    
-    // Backup: Agar browser link open karne ki koshish kare toh use block karne ke liye 
-    // thode delay ke baad check kar sakte hain, par mostly location.href apps trigger kar deta hai.
+function triggerUPI(upiUrl) {
+    // Sabse pehle window.location try karein
+    window.location.href = upiUrl;
+
+    // Agar 2 second tak app nahi khula, toh alternative link try karein
+    setTimeout(() => {
+        if (!document.hidden) {
+            alert("Please ensure a UPI app (PhonePe/Paytm/GPay) is installed.");
+        }
+    }, 2000);
 }
 
 // markPaymentPaid function ko ensure karein ki wo sirf status update kare
