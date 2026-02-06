@@ -332,7 +332,11 @@ function renderCustomerStatus() {
             
             ${o.status === 'Ready' ? `
                 <div class="space-y-2 mt-2">
-                    <a href="${o.payment_link}" target="_blank" class="block text-center bg-green-600 text-white py-3 rounded-2xl font-bold shadow-lg shadow-green-200">Pay Now (₹${o.total_bill})</a>
+                
+          <button onclick="triggerUPI('upi://pay?pa=nagusahu1209@okaxis&pn=Lalla%20Sahu&am=${o.total_bill}&cu=INR')" 
+         class="block w-full text-center bg-green-600 text-white py-3 rounded-2xl font-bold shadow-lg shadow-green-200">
+          Pay Now (₹${o.total_bill})
+        </button>
                     
                     ${o.payment_status !== 'paid' ? `
                         <button onclick="markPaymentPaid(${o.id})" class="w-full text-center bg-zinc-100 text-zinc-600 py-3 rounded-2xl font-black text-[10px] uppercase border border-dashed border-zinc-300">
@@ -463,6 +467,26 @@ function toggleStatusSidebar(s) {
         sidebar.style.transform = s ? 'translateX(0)' : 'translateX(100%)';
     }, 10);
     if(s) fetchOrders(); // Open hote hi refresh karein
+}
+
+function triggerUPI(link) {
+    // Direct location assignment mobile apps trigger karne ke liye better hai
+    window.location.href = link;
+    
+    // Backup: Agar browser link open karne ki koshish kare toh use block karne ke liye 
+    // thode delay ke baad check kar sakte hain, par mostly location.href apps trigger kar deta hai.
+}
+
+// markPaymentPaid function ko ensure karein ki wo sirf status update kare
+async function markPaymentPaid(orderId) {
+    const { error } = await _supabase
+        .from('orders')
+        .update({ payment_status: 'paid' })
+        .eq('id', orderId);
+
+    if (!error) {
+        fetchOrders(); // UI refresh karne ke liye
+    }
 }
 
         // --- Unchanged View and UI Helpers ---
