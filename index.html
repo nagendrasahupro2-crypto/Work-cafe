@@ -369,31 +369,47 @@ try {
 async function sendOrder() {
     const name = document.getElementById('cust-name').value.trim();
     const tableNum = document.getElementById('table-number').value;
-    if(!name || !tableNum || cart.length === 0) return alert("Details missing!");
     
-    // Sirf names ki string (e.g., "Coffee, Pizza")
+    if(!name || !tableNum || cart.length === 0) {
+        return alert("Please enter name, select a table, and add items.");
+    }
+    
+    // Supabase ke 'item_name' column ke liye (Sirf names dikhenge)
     const pureNames = cart.map(it => it.name).join(', ');
     
-    // Poora data (qty/status) hum 'order_status' column mein bhejenge
+    // Supabase ke 'order_status' column ke liye (Saara data JSON format mein)
     const itemsMetadata = JSON.stringify(cart.map(it => ({ 
         name: it.name, 
         qty: it.qty, 
+        note: it.note || '', 
         status: 'Pending' 
     })));
 
-    const { error } = await _supabase.from('orders').insert([{ 
+    const { data, error } = await _supabase.from('orders').insert([{ 
         customer_name: name, 
-        item_name: pureNames, // Ab yahan sirf naam jayega
-        order_status: itemsMetadata, // Yahan metadata jayega
+        item_name: pureNames,         // Ab yahan sirf 'Coffee, Pizza' jayega
+        order_status: itemsMetadata,  // Yahan detail JSON jayega
         quantity: cart.reduce((s,i) => s + i.qty, 0), 
         status: 'Pending',
         device_id: DEVICE_ID,
         total_bill: cart.reduce((s,i) => s + (i.price*i.qty), 0),
         table_number: tableNum
     }]);
-    
-    if (!error) {
-        // ... rest of your code (cart reset, UI updates)
+
+    if (error) {
+        console.error("Supabase Error:", error);
+        alert("Error sending order: " + error.message);
+    } else {
+        // Success logic
+        sounds.orderSent.play().catch(()=>{}); 
+        cart = []; 
+        updateUI(); 
+        toggleCart(false);
+        document.getElementById('cust-name').value = '';
+        document.getElementById('table-number').value = '';
+        document.getElementById('order-sent-banner').classList.remove('hidden'); 
+        setTimeout(()=>document.getElementById('order-sent-banner').classList.add('hidden'), 3000);
+        fetchOrders();
     }
 }
 
