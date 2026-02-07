@@ -241,40 +241,42 @@
 
         // --- Logic Changes Start Here ---
 
-        async function setStaffItemStatus(orderId, itemIndex, newStatus) {
-            const order = orders.find(o => o.id === orderId);
-            if(!order) return;
-            
-            let items = [];
-            try { items = JSON.parse(order.item_name); } catch(e) { return; }
-            
-            items[itemIndex].status = newStatus;
+async function setStaffItemStatus(orderId, itemIndex, newStatus) {
+    const order = orders.find(o => o.id === orderId);
+    if(!order) return;
+    
+    let items = [];
+    try { 
+        items = JSON.parse(order.order_status); // order_status se read karein
+    } catch(e) { return; }
+    
+    items[itemIndex].status = newStatus;
 
-            // Recalculate Total Bill: Only include prices of Accepted or Pending items.
-            // Requirement: "Total bill should always be calculated only from ACCEPTED items."
-            // We interpret this as: Accepted items + Pending (to be decided). Rejected = 0.
-            let newTotal = 0;
-            items.forEach(it => {
-                if (it.status !== 'Rejected') {
-                    const menuItem = menuData.find(m => m.name === it.name);
-                    const price = menuItem ? menuItem.price : 0;
-                    newTotal += (price * it.qty);
-                }
-            });
-            
-            await _supabase.from('orders').update({
-                item_name: JSON.stringify(items),
-                total_bill: newTotal
-            }).eq('id', orderId);
-            fetchOrders();
+    // Recalculate Total Bill: Only Accepted and Pending items
+    let newTotal = 0;
+    items.forEach(it => {
+        if (it.status !== 'Rejected') {
+            const menuItem = menuData.find(m => m.name === it.name);
+            const price = menuItem ? menuItem.price : 0;
+            newTotal += (price * it.qty);
         }
+    });
+    
+    await _supabase.from('orders').update({
+        order_status: JSON.stringify(items),
+        total_bill: newTotal
+    }).eq('id', orderId);
+    fetchOrders();
+}
 
         function renderStaffOrders() {
             const active = orders.filter(o => o.status === 'Pending');
             const list = document.getElementById('staff-orders-list');
             list.innerHTML = active.map(o => {
-                let items = [];
-                try { items = JSON.parse(o.item_name); } catch(e) { items = []; }
+let items = [];
+    try { 
+        items = JSON.parse(o.order_status); // item_name ki jagah order_status
+    } catch(e) { items = []; }
 
                 return `
                 <div class="bg-white p-6 rounded-[32px] border border-zinc-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade">
@@ -325,8 +327,10 @@ function renderCustomerStatus() {
     statusTrigger.classList.remove('opacity-40');
 
     const newHTML = active.map(o => {
-        let items = [];
-        try { items = JSON.parse(o.item_name); } catch(e) { items = []; }
+let items = [];
+    try { 
+        items = JSON.parse(o.order_status); // item_name ki jagah order_status
+    } catch(e) { items = []; }
 
         return `
         <div class="bg-white border-2 border-zinc-100 p-5 rounded-[28px] flex flex-col gap-4 shadow-sm relative overflow-hidden">
@@ -363,32 +367,44 @@ function renderCustomerStatus() {
 
         // --- Standard Logic Maintained ---
 
-        async function sendOrder() {
-            const name = document.getElementById('cust-name').value.trim();
-            const tableNum = document.getElementById('table-number').value;
-            if(!name || !tableNum || cart.length === 0) return alert("Please enter name, select a table, and add items.");
-            
-            const itemsData = cart.map(it => ({ name: it.name, qty: it.qty, note: it.note || '', status: 'Pending' }));
-            const itemsText = JSON.stringify(itemsData);
+async function sendOrder() {
+    const name = document.getElementById('cust-name').value.trim();
+    const tableNum = document.getElementById('table-number').value;
+    if(!name || !tableNum || cart.length === 0) return alert("Please enter name, select a table, and add items.");
+    
+    // String format for item_name: "Item xQty, Item xQty"
+    const itemNamesString = cart.map(it => `${it.name} x${it.qty}`).join(', ');
+    
+    // Detailed JSON for order_status
+    const detailedStatus = cart.map(it => ({ 
+        name: it.name, 
+        qty: it.qty, 
+        note: it.note || '', 
+        status: 'Pending' 
+    }));
 
-            const { error } = await _supabase.from('orders').insert([{ 
-                customer_name: name, 
-                item_name: itemsText, 
-                quantity: cart.reduce((s,i) => s + i.qty, 0), 
-                status: 'Pending',
-                device_id: DEVICE_ID,
-                total_bill: cart.reduce((s,i) => s + (i.price*i.qty), 0),
-                table_number: tableNum
-            }]);
-            if (!error) {
-                sounds.orderSent.play().catch(()=>{}); cart = []; updateUI(); toggleCart(false);
-                document.getElementById('cust-name').value = '';
-                document.getElementById('table-number').value = '';
-                document.getElementById('order-sent-banner').classList.remove('hidden'); 
-                setTimeout(()=>document.getElementById('order-sent-banner').classList.add('hidden'), 3000);
-                fetchOrders();
-            }
-        }
+    const { error } = await _supabase.from('orders').insert([{ 
+        customer_name: name, 
+        item_name: itemNamesString, // Ab text format me save hoga
+        order_status: JSON.stringify(detailedStatus), // Ab details yahan save hogi
+        quantity: cart.reduce((s,i) => s + i.qty, 0), 
+        status: 'Pending',
+        device_id: DEVICE_ID,
+        total_bill: cart.reduce((s,i) => s + (i.price*i.qty), 0),
+        table_number: tableNum
+    }]);
+
+    if (!error) {
+        sounds.orderSent.play().catch(()=>{}); 
+        cart = []; 
+        updateUI(); 
+        toggleCart(false);
+        document.getElementById('cust-name').value = '';
+        document.getElementById('order-sent-banner').classList.remove('hidden'); 
+        setTimeout(()=>document.getElementById('order-sent-banner').classList.add('hidden'), 3000);
+        fetchOrders();
+    }
+}
 
         async function updateOrderStatus(id, s, role) { 
             await _supabase.from('orders').update({ status: s }).eq('id', id); 
@@ -399,8 +415,10 @@ function renderCustomerStatus() {
             const readyToPrint = orders.filter(o => o.status === 'Ready');
             const list = document.getElementById('admin-bills-list');
             list.innerHTML = readyToPrint.map(o => {
-                let items = [];
-                try { items = JSON.parse(o.item_name); } catch(e) { items = []; }
+let items = [];
+    try { 
+        items = JSON.parse(o.order_status); // item_name ki jagah order_status
+    } catch(e) { items = []; }
                 
                 return `
                 <div class="bg-white p-6 rounded-[32px] border border-zinc-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center animate-fade gap-4">
