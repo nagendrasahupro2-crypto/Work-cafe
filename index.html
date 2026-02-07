@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Work cafe | Premium Experience</title>
+    <title>The Second Wife | Premium Experience</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
@@ -35,30 +35,33 @@
         </div>
     </div>
 
-<header class="glass-header sticky top-0 z-50 border-b border-zinc-100">
-    <div class="max-w-7xl mx-auto px-5 h-20 flex justify-between items-center">
-        <div class="flex flex-col">
-            <span class="text-2xl font-black tracking-tighter text-zinc-900 leading-none">WORK <span class="text-orange-600 italic">CAFE</span></span>
-            <span class="text-[7px] font-black tracking-[0.4em] text-zinc-400 uppercase">Kitchen & Restaurant</span>
-        </div>
+    <header class="glass-header sticky top-0 z-50 border-b border-zinc-100">
+        <div class="max-w-7xl mx-auto px-5 h-20 flex justify-between items-center">
+             <div class="flex flex-col"><span class="text-2xl font-black tracking-tighter text-zinc-900 leading-none">THE SECOND <span class="text-orange-600 italic">WIFE</span>
+                    </span>
+                    <span class="text-[7px] font-black tracking-[0.4em] text-zinc-400 uppercase ">Kitchen & Restaurant
+                    </span>
+             </div>
+<div class="flex items-center gap-3">
+    <button id="status-trigger-btn" onclick="toggleStatusSidebar(true)" class="p-3 bg-orange-100 text-orange-600 rounded-2xl shadow-sm transition-transform active:scale-90 border border-orange-200">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+        </svg>
+    </button>
 
-        <div class="flex items-center gap-3">
-            <button id="status-trigger-btn" onclick="toggleStatusSidebar(true)" class="p-3 bg-zinc-100 text-zinc-900 rounded-2xl shadow-sm transition-transform active:scale-90 border border-zinc-200 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-                <span class="hidden sm:block text-[10px] font-black uppercase">My Orders</span>
-            </button>
-
-            <button id="cart-trigger-btn" onclick="toggleCart(true)" class="relative p-3 bg-zinc-900 text-white rounded-2xl shadow-lg transition-transform active:scale-90">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
-                <span id="cart-count" class="absolute -top-1 -right-1 bg-orange-500 text-white text-[9px] w-5 h-5 flex items-center justify-center rounded-full border-2 border-white font-bold">0</span>
-            </button>
+    <button id="cart-trigger-btn" onclick="toggleCart(true)" class="relative p-3 bg-zinc-900 text-white rounded-2xl shadow-lg transition-transform active:scale-90">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" /></svg>
+        <span id="cart-count" class="absolute -top-1 -right-1 bg-orange-500 text-white text-[9px] w-5 h-5 flex items-center justify-center rounded-full border-2 border-white font-bold">0</span>
+    </button>
+</div>
         </div>
-    </div>
-</header>
+    </header>
 
     <section id="customer-panel" class="max-w-7xl mx-auto px-5 py-8">
+        <div id="customer-order-status" class="mb-10 hidden">
+            <h3 class="text-xs font-black uppercase tracking-widest text-zinc-400 mb-4">Your Active Orders</h3>
+            <div id="status-list" class="flex flex-col gap-3"></div>
+        </div>
         <div class="flex gap-4 overflow-x-auto no-scrollbar mb-10 pb-2" id="category-bar"></div>
         <main id="menu-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8"></main>
     </section>
@@ -135,15 +138,24 @@
             </div>
         </div>
     </section>
-
-    <div id="status-sidebar-overlay" class="hidden fixed inset-0 bg-zinc-900/60 z-[100] backdrop-blur-md transition-all" onclick="toggleStatusSidebar(false)">
-    <div id="status-sidebar" class="absolute right-0 top-0 h-full w-full sm:w-[450px] bg-white shadow-2xl flex flex-col translate-x-full transition-transform duration-500" onclick="event.stopPropagation()">
-        <div class="p-8 border-b flex justify-between items-center">
-            <h2 class="text-2xl font-black">Active Orders</h2>
-            <button onclick="toggleStatusSidebar(false)" class="text-2xl">&times;</button>
-        </div>
-        <div id="status-sidebar-list" class="flex-grow overflow-y-auto p-6 space-y-4 bg-zinc-50">
+    
+    <div id="status-sidebar-overlay" class="hidden fixed inset-0 bg-zinc-900/60 z-[110] backdrop-blur-md transition-all" onclick="toggleStatusSidebar(false)">
+    <div id="status-sidebar" class="absolute right-0 top-0 h-full w-full sm:w-[400px] bg-[#fafafa] shadow-2xl flex flex-col translate-x-full transition-transform duration-500" onclick="event.stopPropagation()">
+        <div class="p-8 border-b bg-white flex justify-between items-center">
+            <div>
+                <h2 class="text-2xl font-black italic">Live Orders</h2>
+                <p class="text-[10px] font-black text-zinc-400 uppercase tracking-widest">Kitchen Updates</p>
             </div>
+            <button onclick="toggleStatusSidebar(false)" class="h-10 w-10 flex items-center justify-center bg-zinc-100 rounded-full text-2xl">&times;</button>
+        </div>
+        
+        <div id="status-sidebar-content" class="flex-grow overflow-y-auto p-6">
+            <div id="status-list-sidebar" class="flex flex-col gap-4"></div>
+        </div>
+
+        <div class="p-6 bg-white border-t">
+            <p class="text-[10px] text-center font-bold text-zinc-400 uppercase">Please keep this open to track your meal</p>
+        </div>
     </div>
 </div>
 
@@ -170,8 +182,8 @@
     </div>
 
     <script>
-        const SUPABASE_URL = 'https://bjymgwhthvwwupbisnpw.supabase.co'
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqeW1nd2h0aHZ3d3VwYmlzbnB3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcxNzc4MjMsImV4cCI6MjA4Mjc1MzgyM30.B3cp2YE1iYF1m7OxuzlN0NRLSzjzopgCzAI9450m_nw'
+        const SUPABASE_URL = 'https://bjymgwhthvwwupbisnpw.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqeW1nd2h0aHZ3d3VwYmlzbnB3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcxNzc4MjMsImV4cCI6MjA4Mjc1MzgyM30.B3cp2YE1iYF1m7OxuzlN0NRLSzjzopgCzAI9450m_nw';
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
         if (!localStorage.getItem('cafe_device_id')) {
@@ -229,172 +241,198 @@
 
         // --- Logic Changes Start Here ---
 
-async function setStaffItemStatus(orderId, itemIndex, newStatus) {
-    const order = orders.find(o => o.id === orderId);
-    if (!order) return;
+        async function setStaffItemStatus(orderId, itemIndex, newStatus) {
+            const order = orders.find(o => o.id === orderId);
+            if(!order) return;
+            
+            let items = [];
+            try { items = JSON.parse(order.item_name); } catch(e) { return; }
+            
+            items[itemIndex].status = newStatus;
 
-    let items = [];
-    try {
-        items = JSON.parse(order.item_name);
-    } catch (e) {
-        return;
-    }
-
-    items[itemIndex].status = newStatus;
-
-    let newTotal = 0;
-    items.forEach(it => {
-        if (it.status !== 'Rejected') {
-            const menuItem = menuData.find(m => m.name === it.name);
-            const price = menuItem ? menuItem.price : 0;
-            newTotal += price * it.qty;
+            // Recalculate Total Bill: Only include prices of Accepted or Pending items.
+            // Requirement: "Total bill should always be calculated only from ACCEPTED items."
+            // We interpret this as: Accepted items + Pending (to be decided). Rejected = 0.
+            let newTotal = 0;
+            items.forEach(it => {
+                if (it.status !== 'Rejected') {
+                    const menuItem = menuData.find(m => m.name === it.name);
+                    const price = menuItem ? menuItem.price : 0;
+                    newTotal += (price * it.qty);
+                }
+            });
+            
+            await _supabase.from('orders').update({
+                item_name: JSON.stringify(items),
+                total_bill: newTotal
+            }).eq('id', orderId);
+            fetchOrders();
         }
-    });
 
-    await _supabase
-        .from('orders')
-        .update({
-            item_name: JSON.stringify(items),
-            total_bill: newTotal
-        })
-        .eq('id', orderId);
+        function renderStaffOrders() {
+            const active = orders.filter(o => o.status === 'Pending');
+            const list = document.getElementById('staff-orders-list');
+            list.innerHTML = active.map(o => {
+                let items = [];
+                try { items = JSON.parse(o.item_name); } catch(e) { items = []; }
 
-    fetchOrders();
-}
-
-function renderStaffOrders() {
-    const active = orders.filter(o => o.status === 'Pending');
-    const list = document.getElementById('staff-orders-list');
-    
-    list.innerHTML = active.map(o => `
-        <div class="bg-white p-6 rounded-[32px] border flex flex-col gap-4">
-            <div>
-                <p class="text-[10px] font-black text-orange-600">${o.table_number}</p>
-                <h4 class="text-xl font-black">${o.customer_name}</h4>
-                <p class="text-lg text-zinc-600 font-bold mt-2">${o.item_name}</p>
-            </div>
-            <button onclick="updateOrderStatus(${o.id}, 'Ready', 'staff')" 
-                    class="w-full bg-zinc-900 text-white py-4 rounded-2xl font-bold">
-                MARK AS READY
-            </button>
-        </div>
-    `).join('');
-}
+                return `
+                <div class="bg-white p-6 rounded-[32px] border border-zinc-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade">
+                    <div class="flex-grow w-full">
+                        <div class="flex items-center gap-2 mb-2">
+                             <span class="text-[10px] font-black px-2 py-1 bg-zinc-100 rounded-lg">#ORD-${o.id}</span>
+                             <span class="text-[10px] font-black px-2 py-1 bg-orange-100 text-orange-600 rounded-lg uppercase">${o.table_number || 'No Table'}</span>
+                        </div>
+                        <h4 class="text-xl font-black mb-1">${o.customer_name}</h4>
+                        <div class="space-y-2 mb-4">
+                            ${items.map((it, idx) => `
+                                <div class="flex items-center justify-between bg-zinc-50 p-3 rounded-xl border border-zinc-100">
+                                    <div>
+                                        <span class="text-lg font-bold text-zinc-800">${it.name} x${it.qty}</span>
+                                        <span class="ml-2 text-[10px] font-black uppercase ${it.status === 'Accepted' ? 'text-green-500' : it.status === 'Rejected' ? 'text-red-500' : 'text-zinc-400'}">${it.status}</span>
+                                    </div>
+                                    <div class="flex gap-1">
+                                        ${it.status === 'Pending' ? `
+                                            <button onclick="setStaffItemStatus(${o.id}, ${idx}, 'Accepted')" class="w-8 h-8 bg-green-500 text-white rounded-lg flex items-center justify-center font-bold">✔</button>
+                                            <button onclick="setStaffItemStatus(${o.id}, ${idx}, 'Rejected')" class="w-8 h-8 bg-red-500 text-white rounded-lg flex items-center justify-center font-bold">✖</button>
+                                        ` : `<span class="text-[10px] font-bold px-2 uppercase ${it.status === 'Accepted' ? 'text-green-500' : 'text-red-500'}">${it.status}</span>`}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                        <p class="text-sm font-black text-zinc-400 uppercase tracking-widest">Bill: ₹${o.total_bill}</p>
+                    </div>
+                    <div class="flex gap-2 w-full md:w-auto">
+                        <button onclick="updateOrderStatus(${o.id}, 'Ready', 'staff')" class="flex-1 md:flex-none bg-zinc-900 text-white px-8 py-5 rounded-2xl font-bold text-xs uppercase shadow-xl">Done</button>
+                    </div>
+                </div>
+            `}).join('');
+        }
 
 function renderCustomerStatus() {
-    const active = orders.filter(o => (o.status !== 'Completed' && o.status !== 'Cancelled') && o.device_id === DEVICE_ID);
-    const statusContainer = document.getElementById('status-sidebar-list');
+    const active = orders.filter(o => (o.status !== 'Completed' && o.status !== 'Cancelled') && o.device_id === DEVICE_ID && o.created_by !== 'ADMIN');
     
+    // Sidebar list container
+    const statusList = document.getElementById('status-list-sidebar');
+    const statusTrigger = document.getElementById('status-trigger-btn');
+
     if (active.length === 0) {
-        statusContainer.innerHTML = `<div class="text-center py-20 text-zinc-400 font-bold">No active orders</div>`;
+        statusList.innerHTML = `<div class="text-center py-20 text-zinc-400 font-bold">No active orders found.</div>`;
+        statusTrigger.classList.add('opacity-40'); // Orders nahi to button thoda light dikhega
         return;
     }
 
-    statusContainer.innerHTML = active.map(o => `
-        <div class="bg-white border p-6 rounded-[32px] flex flex-col gap-4 shadow-sm">
-            <div class="flex justify-between">
-                <span class="text-[10px] font-black bg-zinc-100 px-2 py-1 rounded-lg">#ORD-${o.id}</span>
-                <span class="text-[10px] font-black uppercase text-orange-600">${o.status}</span>
+    statusTrigger.classList.remove('opacity-40');
+
+    const newHTML = active.map(o => {
+        let items = [];
+        try { items = JSON.parse(o.item_name); } catch(e) { items = []; }
+
+        return `
+        <div class="bg-white border-2 border-zinc-100 p-5 rounded-[28px] flex flex-col gap-4 shadow-sm relative overflow-hidden">
+            <div class="flex justify-between items-center border-b pb-3">
+                <span class="text-[10px] font-black bg-zinc-900 text-white px-2 py-1 rounded-lg uppercase">${o.table_number || 'Takeaway'}</span>
+                <span class="text-[10px] font-black text-orange-500 italic">Order #${o.id}</span>
             </div>
-            <div class="text-sm font-bold text-zinc-700">
-                ${o.item_name} </div>
-            ${o.status === 'Ready' ? `
-                <button onclick="triggerUPI('...')" class="w-full bg-green-600 text-white py-3 rounded-2xl font-bold">
-                    Pay ₹${o.total_bill}
-                </button>
-            ` : ''}
+            <div class="space-y-3">
+                ${items.map(it => `
+                    <div class="flex justify-between items-center">
+                        <div class="flex flex-col">
+                            <span class="text-sm font-bold text-zinc-800">${it.name} <span class="text-zinc-400">x${it.qty}</span></span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[9px] font-black uppercase ${it.status === 'Accepted' ? 'text-green-500' : it.status === 'Rejected' ? 'text-red-500' : 'text-zinc-300'}">${it.status}</span>
+                            ${it.status === 'Accepted' ? '<span class="text-green-500 text-xs">●</span>' : it.status === 'Rejected' ? '<span class="text-red-500 text-xs">●</span>' : '<span class="text-zinc-200 animate-pulse text-xs">●</span>'}
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+            <div class="pt-3 border-t flex justify-between items-center">
+                <span class="text-[10px] font-black uppercase text-zinc-400">Paid Status: <span class="text-zinc-900">${o.status}</span></span>
+                <span class="text-lg font-black text-zinc-900">₹${o.total_bill}</span>
+            </div>
         </div>
-    `).join('');
+        `;
+    }).join('');
+
+    if (newHTML !== lastStatusHTML) {
+        statusList.innerHTML = newHTML;
+        lastStatusHTML = newHTML;
+    }
 }
 
         // --- Standard Logic Maintained ---
 
-async function sendOrder() {
-    const name = document.getElementById('cust-name').value.trim();
-    const tableNum = document.getElementById('table-number').value;
-    if(!name || !tableNum || cart.length === 0) return alert("Please enter name, select a table, and add items.");
-    
-    // Yahan hum sirf names ko comma-separated string bana rahe hain
-    const itemsOnlyNames = cart.map(it => `${it.name} (x${it.qty})`).join(', ');
-
-    const { error } = await _supabase.from('orders').insert([{ 
-        customer_name: name, 
-        item_name: itemsOnlyNames, // Ab yahan JSON nahi, sirf string jayega
-        quantity: cart.reduce((s,i) => s + i.qty, 0), 
-        status: 'Pending',
-        device_id: DEVICE_ID,
-        total_bill: cart.reduce((s,i) => s + (i.price*i.qty), 0),
-        table_number: tableNum
-    }]);
-
-    if (!error) {
-        cart = []; 
-        updateUI(); 
-        toggleCart(false);
-        document.getElementById('order-sent-banner').classList.remove('hidden'); 
-        setTimeout(()=>document.getElementById('order-sent-banner').classList.add('hidden'), 3000);
-        fetchOrders();
-    }
-}
-
-async function updateOrderStatus(id, s, role) {
-    // Payment link aur status hata diya gaya hai
-    await _supabase.from('orders').update({ 
-        status: s 
-    }).eq('id', id);
-    
-    fetchOrders();
-}
-
-function renderAdminBills() {
-    const readyToPrint = orders.filter(o => o.status === 'Ready');
-    const list = document.getElementById('admin-bills-list');
-    list.innerHTML = readyToPrint.map(o => {
-        let items = [];
-        try { items = JSON.parse(o.item_name); } catch(e) { items = []; }
-        
-        return `
-        <div class="bg-white p-6 rounded-[32px] border border-zinc-100 shadow-sm flex flex-col sm:flex-row justify-between items-center animate-fade gap-4">
-            <div class="flex-grow">
-                <div class="flex items-center gap-2 mb-1">
-                    <h4 class="text-lg font-black">${o.customer_name}</h4>
-                    <span class="text-[9px] font-black bg-zinc-900 text-white px-2 py-0.5 rounded-full uppercase">${o.table_number || ''}</span>
-                </div>
-                <div class="mt-2 space-y-1">
-                    ${items.filter(it => it.status !== 'Rejected').map(it => `<p class="text-sm font-bold uppercase text-zinc-600">• ${it.name} x${it.qty}</p>`).join('')}
-                </div>
-                <p class="text-2xl font-black mt-3 text-zinc-900">₹${o.total_bill}</p>
-            </div>
+        async function sendOrder() {
+            const name = document.getElementById('cust-name').value.trim();
+            const tableNum = document.getElementById('table-number').value;
+            if(!name || !tableNum || cart.length === 0) return alert("Please enter name, select a table, and add items.");
             
-            <button onclick="completeOrder(${o.id})" class="w-full sm:w-auto bg-zinc-900 text-white px-10 py-4 rounded-2xl font-bold text-xs uppercase shadow-lg active:scale-95 transition-all">
-                Done (Clear Order)
-            </button>
-        </div>`;
-    }).join('');
-}
-      
+            const itemsData = cart.map(it => ({ name: it.name, qty: it.qty, note: it.note || '', status: 'Pending' }));
+            const itemsText = JSON.stringify(itemsData);
+
+            const { error } = await _supabase.from('orders').insert([{ 
+                customer_name: name, 
+                item_name: itemsText, 
+                quantity: cart.reduce((s,i) => s + i.qty, 0), 
+                status: 'Pending',
+                device_id: DEVICE_ID,
+                total_bill: cart.reduce((s,i) => s + (i.price*i.qty), 0),
+                table_number: tableNum
+            }]);
+            if (!error) {
+                sounds.orderSent.play().catch(()=>{}); cart = []; updateUI(); toggleCart(false);
+                document.getElementById('cust-name').value = '';
+                document.getElementById('table-number').value = '';
+                document.getElementById('order-sent-banner').classList.remove('hidden'); 
+                setTimeout(()=>document.getElementById('order-sent-banner').classList.add('hidden'), 3000);
+                fetchOrders();
+            }
+        }
+
+        async function updateOrderStatus(id, s, role) { 
+            await _supabase.from('orders').update({ status: s }).eq('id', id); 
+            fetchOrders(); 
+        }
+
+        function renderAdminBills() {
+            const readyToPrint = orders.filter(o => o.status === 'Ready');
+            const list = document.getElementById('admin-bills-list');
+            list.innerHTML = readyToPrint.map(o => {
+                let items = [];
+                try { items = JSON.parse(o.item_name); } catch(e) { items = []; }
+                
+                return `
+                <div class="bg-white p-6 rounded-[32px] border border-zinc-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center animate-fade gap-4">
+                    <div class="flex-grow">
+                        <div class="flex items-center gap-2 mb-1">
+                            <h4 class="text-lg font-black">${o.customer_name}</h4>
+                            <span class="text-[9px] font-black bg-zinc-900 text-white px-2 py-0.5 rounded-full uppercase">${o.table_number || ''}</span>
+                        </div>
+                        <div class="mt-2 space-y-1">
+                            ${items.filter(it => it.status !== 'Rejected').map(it => `<p class="text-sm font-bold uppercase text-zinc-600">• ${it.name} x${it.qty}</p>`).join('')}
+                        </div>
+                        <p class="text-2xl font-black mt-3 text-zinc-900">₹${o.total_bill}</p>
+                    </div>
+                    <button onclick="completeOrder(${o.id})" class="w-full sm:w-auto bg-green-600 text-white px-10 py-5 rounded-2xl font-bold text-xs uppercase shadow-lg">Done</button>
+                </div>
+            `}).join('');
+        }
+
+        async function completeOrder(orderId) {
+            await _supabase.from('orders').update({ status: 'Completed' }).eq('id', orderId);
+            fetchOrders();
+        }
         
-async function completeOrder(orderId) {
-  await _supabase.from('orders')
-    .update({ status: 'Completed' })
-    .eq('id', orderId);
-
-  fetchOrders();
-}
-
-function toggleStatusSidebar(s) {
+        function toggleStatusSidebar(s) {
     const overlay = document.getElementById('status-sidebar-overlay');
     const sidebar = document.getElementById('status-sidebar');
     overlay.classList.toggle('hidden', !s);
+    // Timeout isliye taaki animation smooth dikhe
     setTimeout(() => {
         sidebar.style.transform = s ? 'translateX(0)' : 'translateX(100%)';
     }, 10);
-    if(s) fetchOrders(); // Open hote hi refresh karein
 }
-
-
-
-
 
         // --- Unchanged View and UI Helpers ---
         function toggleAdminBasket(s) { const overlay = document.getElementById('admin-basket-overlay'); const sidebar = document.getElementById('admin-basket-sidebar'); overlay.classList.toggle('hidden', !s); sidebar.style.transform = s ? 'translateX(0)' : 'translateX(100%)'; if(s) { adminCart = []; updateAdminCartUI(); renderAdminInternalTabs(); renderAdminInternalMenu('All'); } }
@@ -407,26 +445,7 @@ function toggleStatusSidebar(s) {
         function renderMenu(items) { document.getElementById('menu-grid').innerHTML = items.map(item => `<div class="item-card bg-white rounded-[32px] p-4 border border-zinc-100 shadow-sm animate-fade ${!item.is_available ? 'opacity-50 grayscale' : ''}"><img src="${item.image_url}" class="h-48 w-full object-cover rounded-[24px] mb-4"><div class="px-2"><p class="text-[10px] font-bold text-orange-500 uppercase mb-1">${item.category}</p><h3 class="font-extrabold text-lg text-zinc-900 mb-4">${item.name}</h3><div class="flex justify-between items-center"><span class="text-xl font-bold">₹${item.price}</span>${item.is_available ? `<button onclick="addToCart(${item.id})" class="h-12 w-12 bg-zinc-900 text-white rounded-2xl flex items-center justify-center shadow-lg">+</button>` : `<span class="text-[10px] font-black text-red-500 border border-red-100 px-3 py-1 rounded-full bg-red-50 uppercase">Sold Out</span>`}</div></div></div>`).join(''); }
         function addToCart(id) { const item = menuData.find(m => m.id === id); const exist = cart.find(c => c.id === id); if(exist) exist.qty++; else cart.push({...item, qty: 1, note: ''}); updateUI(); const pop = document.getElementById('silent-popup'); pop.classList.remove('hidden'); setTimeout(()=>pop.classList.add('hidden'), 2000); }
         function updateUI() { document.getElementById('cart-count').innerText = cart.reduce((s,i) => s + i.qty, 0); document.getElementById('cart-content').innerHTML = cart.map((item, i) => `<div class="flex flex-col gap-4 border-b border-zinc-50 pb-6"><div class="flex gap-4 items-center"><img src="${item.image_url}" class="w-16 h-16 rounded-2xl object-cover shadow-sm"><div class="flex-grow"><h4 class="font-bold text-sm">${item.name}</h4><p class="text-[10px] font-black">₹${item.price * item.qty}</p></div><div class="flex items-center gap-2"><button onclick="changeQty(${i},-1)" class="w-6 h-6 bg-zinc-100 rounded">-</button><span class="text-xs font-bold">${item.qty}</span><button onclick="changeQty(${i},1)" class="w-6 h-6 bg-zinc-900 text-white rounded">+</button></div></div><input type="text" placeholder="Extra info" onchange="cart[${i}].note=this.value" value="${item.note || ''}" class="bg-zinc-100 p-2 rounded-xl text-[10px] font-bold outline-none"></div>`).join(''); document.getElementById('cart-total-price').innerText = `₹${cart.reduce((s,i) => s + (i.price*i.qty), 0)}`; }
-function checkRoute() {
-    const h = window.location.hash;
-    isAdminLoggedIn = (h === '#admin' && isAdminLoggedIn);
-    isStaffLoggedIn = (h === '#staff' && isStaffLoggedIn);
-
-    // Ye line ensure karegi ki 'My Orders' button sirf customer panel pe dikhe
-    const isUserPage = (h !== '#admin' && h !== '#staff');
-    document.getElementById('status-trigger-btn').classList.toggle('hidden', !isUserPage);
-    document.getElementById('cart-trigger-btn').classList.toggle('hidden', !isUserPage);
-
-    // Baki panels ka logic (Waisa hi rahega)
-    document.getElementById('customer-panel').classList.toggle('hidden', !isUserPage);
-    document.getElementById('admin-login-panel').classList.toggle('hidden', h !== '#admin' || isAdminLoggedIn);
-    document.getElementById('admin-panel').classList.toggle('hidden', h !== '#admin' || !isAdminLoggedIn);
-    document.getElementById('staff-login-panel').classList.toggle('hidden', h !== '#staff' || isStaffLoggedIn);
-    document.getElementById('staff-panel').classList.toggle('hidden', h !== '#staff' || !isStaffLoggedIn);
-
-    if(isAdminLoggedIn) { renderAdminBills(); renderAdminMenu(); }
-    if(isStaffLoggedIn) { renderStaffOrders(); }
-}
+        function checkRoute() { const h = window.location.hash; isAdminLoggedIn = (h === '#admin' && isAdminLoggedIn); isStaffLoggedIn = (h === '#staff' && isStaffLoggedIn); document.getElementById('customer-panel').classList.toggle('hidden', h === '#admin' || h === '#staff'); document.getElementById('admin-login-panel').classList.toggle('hidden', h !== '#admin' || isAdminLoggedIn); document.getElementById('admin-panel').classList.toggle('hidden', h !== '#admin' || !isAdminLoggedIn); document.getElementById('staff-login-panel').classList.toggle('hidden', h !== '#staff' || isStaffLoggedIn); document.getElementById('staff-panel').classList.toggle('hidden', h !== '#staff' || !isStaffLoggedIn); document.getElementById('cart-trigger-btn').classList.toggle('hidden', h === '#admin' || h === '#staff'); if(isAdminLoggedIn) { renderAdminBills(); renderAdminMenu(); } if(isStaffLoggedIn) { renderStaffOrders(); } }
         function handleLogin(role) { if (role === 'admin') { if (document.getElementById('admin-id').value === 'admin' && document.getElementById('admin-pass').value === '1234') { isAdminLoggedIn = true; checkRoute(); } else alert("Wrong Pass"); } else if (role === 'staff') { if (document.getElementById('staff-id').value === 'staff' && document.getElementById('staff-pass').value === '1234') { isStaffLoggedIn = true; checkRoute(); } else alert("Wrong Pass"); } }
         function changeQty(i, d) { cart[i].qty += d; if(cart[i].qty < 1) cart.splice(i, 1); updateUI(); }
         function toggleCart(s) { if(s && (window.location.hash === '#admin' || window.location.hash === '#staff')) return; document.getElementById('cart-sidebar-overlay').classList.toggle('hidden', !s); document.getElementById('cart-sidebar').style.transform = s ? 'translateX(0)' : 'translateX(100%)'; }
