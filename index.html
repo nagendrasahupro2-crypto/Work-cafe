@@ -262,151 +262,87 @@ async function setStaffItemStatus(orderId, itemIndex, newStatus) {
     fetchOrders();
 }
 
-        function renderStaffOrders() {
-            const active = orders.filter(o => o.status === 'Pending');
-            const list = document.getElementById('staff-orders-list');
-            list.innerHTML = active.map(o => {
-                let items = [];
-                try { items = JSON.parse(o.item_name); } catch(e) { items = []; }
-
-                return `
-                <div class="bg-white p-6 rounded-[32px] border border-zinc-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade">
-                    <div class="flex-grow w-full">
-                        <div class="flex items-center gap-2 mb-2">
-                             <span class="text-[10px] font-black px-2 py-1 bg-zinc-100 rounded-lg">#ORD-${o.id}</span>
-                             <span class="text-[10px] font-black px-2 py-1 bg-orange-100 text-orange-600 rounded-lg uppercase">${o.table_number || 'No Table'}</span>
-                        </div>
-                        <h4 class="text-xl font-black mb-1">${o.customer_name}</h4>
-                        <div class="space-y-2 mb-4">
-                            ${items.map((it, idx) => `
-                                <div class="flex items-center justify-between bg-zinc-50 p-3 rounded-xl border border-zinc-100">
-                                    <div>
-                                        <span class="text-lg font-bold text-zinc-800">${it.name} x${it.qty}</span>
-                                        <span class="ml-2 text-[10px] font-black uppercase ${it.status === 'Accepted' ? 'text-green-500' : it.status === 'Rejected' ? 'text-red-500' : 'text-zinc-400'}">${it.status}</span>
-                                    </div>
-                                    <div class="flex gap-1">
-                                        ${it.status === 'Pending' ? `
-                                            <button onclick="setStaffItemStatus(${o.id}, ${idx}, 'Accepted')" class="w-8 h-8 bg-green-500 text-white rounded-lg flex items-center justify-center font-bold">✔</button>
-                                            <button onclick="setStaffItemStatus(${o.id}, ${idx}, 'Rejected')" class="w-8 h-8 bg-red-500 text-white rounded-lg flex items-center justify-center font-bold">✖</button>
-                                        ` : `<span class="text-[10px] font-bold px-2 uppercase ${it.status === 'Accepted' ? 'text-green-500' : 'text-red-500'}">${it.status}</span>`}
-                                    </div>
-                                </div>
-                            `).join('')}
-                        </div>
-                        <p class="text-sm font-black text-zinc-400 uppercase tracking-widest">Bill: ₹${o.total_bill}</p>
-                    </div>
-                    <div class="flex gap-2 w-full md:w-auto">
-                        <button onclick="updateOrderStatus(${o.id}, 'Ready', 'staff')" class="flex-1 md:flex-none bg-zinc-900 text-white px-8 py-5 rounded-2xl font-bold text-xs uppercase shadow-xl">Done</button>
-                    </div>
-                </div>
-            `}).join('');
-        }
+function renderStaffOrders() {
+    const active = orders.filter(o => o.status === 'Pending');
+    const list = document.getElementById('staff-orders-list');
+    
+    list.innerHTML = active.map(o => `
+        <div class="bg-white p-6 rounded-[32px] border flex flex-col gap-4">
+            <div>
+                <p class="text-[10px] font-black text-orange-600">${o.table_number}</p>
+                <h4 class="text-xl font-black">${o.customer_name}</h4>
+                <p class="text-lg text-zinc-600 font-bold mt-2">${o.item_name}</p>
+            </div>
+            <button onclick="updateOrderStatus(${o.id}, 'Ready', 'staff')" 
+                    class="w-full bg-zinc-900 text-white py-4 rounded-2xl font-bold">
+                MARK AS READY
+            </button>
+        </div>
+    `).join('');
+}
 
 function renderCustomerStatus() {
-    const active = orders.filter(o => (o.status !== 'Completed' && o.status !== 'Cancelled') && o.device_id === DEVICE_ID && o.created_by !== 'ADMIN');
+    const active = orders.filter(o => (o.status !== 'Completed' && o.status !== 'Cancelled') && o.device_id === DEVICE_ID);
     const statusContainer = document.getElementById('status-sidebar-list');
     
     if (active.length === 0) {
-        statusContainer.innerHTML = `<div class="text-center py-20 text-zinc-400 font-bold">No active orders found</div>`;
+        statusContainer.innerHTML = `<div class="text-center py-20 text-zinc-400 font-bold">No active orders</div>`;
         return;
     }
 
-    const newHTML = active.map(o => {
-        let items = [];
-        try { items = JSON.parse(o.item_name); } catch(e) { items = []; }
-
-        // UPI Link logic
-        const upiLink = `upi://pay?pa=nagusahu1209@okaxis&pn=Lalla%20Sahu&am=${o.total_bill}&cu=INR&mode=02&purpose=00`;
-
-        return `
-        <div class="bg-white border p-6 rounded-[32px] flex flex-col gap-4 shadow-sm animate-fade">
-            <div class="flex justify-between items-start">
+    statusContainer.innerHTML = active.map(o => `
+        <div class="bg-white border p-6 rounded-[32px] flex flex-col gap-4 shadow-sm">
+            <div class="flex justify-between">
                 <span class="text-[10px] font-black bg-zinc-100 px-2 py-1 rounded-lg">#ORD-${o.id}</span>
                 <span class="text-[10px] font-black uppercase text-orange-600">${o.status}</span>
             </div>
-            <div class="space-y-3">
-                ${items.map(it => `
-                    <div class="flex justify-between items-center">
-                        <span class="text-sm font-bold text-zinc-700">${it.name} <span class="text-zinc-400">x${it.qty}</span></span>
-                        <span class="text-[10px] font-black uppercase ${it.status === 'Accepted' ? 'text-green-500' : it.status === 'Rejected' ? 'text-red-500' : 'text-zinc-300'}">${it.status}</span>
-                    </div>
-                `).join('')}
-            </div>
-            
+            <div class="text-sm font-bold text-zinc-700">
+                ${o.item_name} </div>
             ${o.status === 'Ready' ? `
-                <div class="space-y-2 mt-2">
-                    <button onclick="triggerUPI('${upiLink}')" class="block w-full text-center bg-green-600 text-white py-3 rounded-2xl font-bold shadow-lg shadow-green-200">
-                        Pay Now (₹${o.total_bill})
-                    </button>
-                    
-                    ${o.payment_status !== 'paid' ? `
-                        <button onclick="markPaymentPaid(${o.id})" class="w-full text-center bg-zinc-100 text-zinc-600 py-3 rounded-2xl font-black text-[10px] uppercase border border-dashed border-zinc-300">
-                            Payment Done? Click here
-                        </button>
-                    ` : `
-                        <div class="text-center text-green-600 font-black text-[10px] uppercase py-2">Verification Sent to Admin ✅</div>
-                    `}
-                </div>
+                <button onclick="triggerUPI('...')" class="w-full bg-green-600 text-white py-3 rounded-2xl font-bold">
+                    Pay ₹${o.total_bill}
+                </button>
             ` : ''}
-
-            <div class="pt-4 border-t flex justify-between items-center">
-                <span class="text-[10px] font-black uppercase text-zinc-400 tracking-widest">Total Bill</span>
-                <span class="text-xl font-black">₹${o.total_bill}</span>
-            </div>
-        </div>`;
-    }).join('');
-
-    if (newHTML !== lastStatusHTML) {
-        statusContainer.innerHTML = newHTML;
-        lastStatusHTML = newHTML;
-    }
+        </div>
+    `).join('');
 }
 
         // --- Standard Logic Maintained ---
 
-        async function sendOrder() {
-            const name = document.getElementById('cust-name').value.trim();
-            const tableNum = document.getElementById('table-number').value;
-            if(!name || !tableNum || cart.length === 0) return alert("Please enter name, select a table, and add items.");
-            
-            const itemsData = cart.map(it => ({ name: it.name, qty: it.qty, note: it.note || '', status: 'Pending' }));
-            const itemsText = JSON.stringify(itemsData);
+async function sendOrder() {
+    const name = document.getElementById('cust-name').value.trim();
+    const tableNum = document.getElementById('table-number').value;
+    if(!name || !tableNum || cart.length === 0) return alert("Please enter name, select a table, and add items.");
+    
+    // Yahan hum sirf names ko comma-separated string bana rahe hain
+    const itemsOnlyNames = cart.map(it => `${it.name} (x${it.qty})`).join(', ');
 
-            const { error } = await _supabase.from('orders').insert([{ 
-                customer_name: name, 
-                item_name: itemsText, 
-                quantity: cart.reduce((s,i) => s + i.qty, 0), 
-                status: 'Pending',
-                device_id: DEVICE_ID,
-                total_bill: cart.reduce((s,i) => s + (i.price*i.qty), 0),
-                table_number: tableNum
-            }]);
-            if (!error) {
-                sounds.orderSent.play().catch(()=>{}); cart = []; updateUI(); toggleCart(false);
-                document.getElementById('cust-name').value = '';
-                document.getElementById('table-number').value = '';
-                document.getElementById('order-sent-banner').classList.remove('hidden'); 
-                setTimeout(()=>document.getElementById('order-sent-banner').classList.add('hidden'), 3000);
-                fetchOrders();
-            }
-        }
+    const { error } = await _supabase.from('orders').insert([{ 
+        customer_name: name, 
+        item_name: itemsOnlyNames, // Ab yahan JSON nahi, sirf string jayega
+        quantity: cart.reduce((s,i) => s + i.qty, 0), 
+        status: 'Pending',
+        device_id: DEVICE_ID,
+        total_bill: cart.reduce((s,i) => s + (i.price*i.qty), 0),
+        table_number: tableNum
+    }]);
+
+    if (!error) {
+        cart = []; 
+        updateUI(); 
+        toggleCart(false);
+        document.getElementById('order-sent-banner').classList.remove('hidden'); 
+        setTimeout(()=>document.getElementById('order-sent-banner').classList.add('hidden'), 3000);
+        fetchOrders();
+    }
+}
 
 async function updateOrderStatus(id, s, role) {
-    if (s === 'Ready') {
-        const order = orders.find(o => o.id === id);
-        if (!order) return;
-
-        // Correct String Template
-        const upiLink = `upi://pay?pa=nagusahu1209@okaxis&pn=Lalla%20Sahu&am=${order.total_bill}&cu=INR`;
-
-        await _supabase.from('orders').update({
-            status: 'Ready',
-            payment_status: 'pending',
-            payment_link: upiLink
-        }).eq('id', id);
-    } else {
-        await _supabase.from('orders').update({ status: s }).eq('id', id);
-    }
+    // Payment link aur status hata diya gaya hai
+    await _supabase.from('orders').update({ 
+        status: s 
+    }).eq('id', id);
+    
     fetchOrders();
 }
 
@@ -418,7 +354,7 @@ function renderAdminBills() {
         try { items = JSON.parse(o.item_name); } catch(e) { items = []; }
         
         return `
-        <div class="bg-white p-6 rounded-[32px] border border-zinc-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center animate-fade gap-4">
+        <div class="bg-white p-6 rounded-[32px] border border-zinc-100 shadow-sm flex flex-col sm:flex-row justify-between items-center animate-fade gap-4">
             <div class="flex-grow">
                 <div class="flex items-center gap-2 mb-1">
                     <h4 class="text-lg font-black">${o.customer_name}</h4>
@@ -430,28 +366,13 @@ function renderAdminBills() {
                 <p class="text-2xl font-black mt-3 text-zinc-900">₹${o.total_bill}</p>
             </div>
             
-            <div class="flex flex-col gap-3 w-full sm:w-auto">
-                ${o.payment_status === 'paid' 
-                    ? `<div class="text-green-600 font-black text-xs uppercase text-center">Payment Success ✅</div>` 
-                    : `<div class="text-orange-500 font-black text-xs uppercase text-center italic">Awaiting Payment...</div>`
-                }
-                
-                <button onclick="completeOrder(${o.id})" class="bg-zinc-900 text-white px-10 py-4 rounded-2xl font-bold text-xs uppercase shadow-lg active:scale-95 transition-all">
-                    Done (Clear Order)
-                </button>
-            </div>
+            <button onclick="completeOrder(${o.id})" class="w-full sm:w-auto bg-zinc-900 text-white px-10 py-4 rounded-2xl font-bold text-xs uppercase shadow-lg active:scale-95 transition-all">
+                Done (Clear Order)
+            </button>
         </div>`;
     }).join('');
 }
-        
-        async function markPaymentPaid(orderId) {
-  await _supabase
-    .from('orders')
-    .update({ payment_status: 'paid' })
-    .eq('id', orderId);
-
-  fetchOrders();
-}
+      
         
 async function completeOrder(orderId) {
   await _supabase.from('orders')
@@ -471,29 +392,9 @@ function toggleStatusSidebar(s) {
     if(s) fetchOrders(); // Open hote hi refresh karein
 }
 
-function triggerUPI(upiUrl) {
-    // Sabse pehle window.location try karein
-    window.location.href = upiUrl;
 
-    // Agar 2 second tak app nahi khula, toh alternative link try karein
-    setTimeout(() => {
-        if (!document.hidden) {
-            alert("Please ensure a UPI app (PhonePe/Paytm/GPay) is installed.");
-        }
-    }, 2000);
-}
 
-// markPaymentPaid function ko ensure karein ki wo sirf status update kare
-async function markPaymentPaid(orderId) {
-    const { error } = await _supabase
-        .from('orders')
-        .update({ payment_status: 'paid' })
-        .eq('id', orderId);
 
-    if (!error) {
-        fetchOrders(); // UI refresh karne ke liye
-    }
-}
 
         // --- Unchanged View and UI Helpers ---
         function toggleAdminBasket(s) { const overlay = document.getElementById('admin-basket-overlay'); const sidebar = document.getElementById('admin-basket-sidebar'); overlay.classList.toggle('hidden', !s); sidebar.style.transform = s ? 'translateX(0)' : 'translateX(100%)'; if(s) { adminCart = []; updateAdminCartUI(); renderAdminInternalTabs(); renderAdminInternalMenu('All'); } }
