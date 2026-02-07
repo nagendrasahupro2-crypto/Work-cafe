@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The Second Wife | Premium Experience</title>
+    <title>Work cafe | Premium Experience</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
@@ -37,7 +37,7 @@
 
     <header class="glass-header sticky top-0 z-50 border-b border-zinc-100">
         <div class="max-w-7xl mx-auto px-5 h-20 flex justify-between items-center">
-             <div class="flex flex-col"><span class="text-2xl font-black tracking-tighter text-zinc-900 leading-none">THE SECOND <span class="text-orange-600 italic">WIFE</span>
+             <div class="flex flex-col"><span class="text-2xl font-black tracking-tighter text-zinc-900 leading-none">WORK <span class="text-orange-600 italic">CAFE</span>
                     </span>
                     <span class="text-[7px] font-black tracking-[0.4em] text-zinc-400 uppercase ">Kitchen & Restaurant
                     </span>
@@ -424,14 +424,20 @@ function renderCustomerStatus() {
             fetchOrders();
         }
         
-        function toggleStatusSidebar(s) {
+function toggleStatusSidebar(s) {
+    // Agar admin ya staff login hai to sidebar nahi khulega
+    if (s && (window.location.hash === '#admin' || window.location.hash === '#staff')) return;
+
     const overlay = document.getElementById('status-sidebar-overlay');
     const sidebar = document.getElementById('status-sidebar');
-    overlay.classList.toggle('hidden', !s);
-    // Timeout isliye taaki animation smooth dikhe
-    setTimeout(() => {
-        sidebar.style.transform = s ? 'translateX(0)' : 'translateX(100%)';
-    }, 10);
+    
+    if (s) {
+        overlay.classList.remove('hidden');
+        setTimeout(() => sidebar.style.transform = 'translateX(0)', 10);
+    } else {
+        sidebar.style.transform = 'translateX(100%)';
+        setTimeout(() => overlay.classList.add('hidden'), 500);
+    }
 }
 
         // --- Unchanged View and UI Helpers ---
@@ -445,7 +451,33 @@ function renderCustomerStatus() {
         function renderMenu(items) { document.getElementById('menu-grid').innerHTML = items.map(item => `<div class="item-card bg-white rounded-[32px] p-4 border border-zinc-100 shadow-sm animate-fade ${!item.is_available ? 'opacity-50 grayscale' : ''}"><img src="${item.image_url}" class="h-48 w-full object-cover rounded-[24px] mb-4"><div class="px-2"><p class="text-[10px] font-bold text-orange-500 uppercase mb-1">${item.category}</p><h3 class="font-extrabold text-lg text-zinc-900 mb-4">${item.name}</h3><div class="flex justify-between items-center"><span class="text-xl font-bold">₹${item.price}</span>${item.is_available ? `<button onclick="addToCart(${item.id})" class="h-12 w-12 bg-zinc-900 text-white rounded-2xl flex items-center justify-center shadow-lg">+</button>` : `<span class="text-[10px] font-black text-red-500 border border-red-100 px-3 py-1 rounded-full bg-red-50 uppercase">Sold Out</span>`}</div></div></div>`).join(''); }
         function addToCart(id) { const item = menuData.find(m => m.id === id); const exist = cart.find(c => c.id === id); if(exist) exist.qty++; else cart.push({...item, qty: 1, note: ''}); updateUI(); const pop = document.getElementById('silent-popup'); pop.classList.remove('hidden'); setTimeout(()=>pop.classList.add('hidden'), 2000); }
         function updateUI() { document.getElementById('cart-count').innerText = cart.reduce((s,i) => s + i.qty, 0); document.getElementById('cart-content').innerHTML = cart.map((item, i) => `<div class="flex flex-col gap-4 border-b border-zinc-50 pb-6"><div class="flex gap-4 items-center"><img src="${item.image_url}" class="w-16 h-16 rounded-2xl object-cover shadow-sm"><div class="flex-grow"><h4 class="font-bold text-sm">${item.name}</h4><p class="text-[10px] font-black">₹${item.price * item.qty}</p></div><div class="flex items-center gap-2"><button onclick="changeQty(${i},-1)" class="w-6 h-6 bg-zinc-100 rounded">-</button><span class="text-xs font-bold">${item.qty}</span><button onclick="changeQty(${i},1)" class="w-6 h-6 bg-zinc-900 text-white rounded">+</button></div></div><input type="text" placeholder="Extra info" onchange="cart[${i}].note=this.value" value="${item.note || ''}" class="bg-zinc-100 p-2 rounded-xl text-[10px] font-bold outline-none"></div>`).join(''); document.getElementById('cart-total-price').innerText = `₹${cart.reduce((s,i) => s + (i.price*i.qty), 0)}`; }
-        function checkRoute() { const h = window.location.hash; isAdminLoggedIn = (h === '#admin' && isAdminLoggedIn); isStaffLoggedIn = (h === '#staff' && isStaffLoggedIn); document.getElementById('customer-panel').classList.toggle('hidden', h === '#admin' || h === '#staff'); document.getElementById('admin-login-panel').classList.toggle('hidden', h !== '#admin' || isAdminLoggedIn); document.getElementById('admin-panel').classList.toggle('hidden', h !== '#admin' || !isAdminLoggedIn); document.getElementById('staff-login-panel').classList.toggle('hidden', h !== '#staff' || isStaffLoggedIn); document.getElementById('staff-panel').classList.toggle('hidden', h !== '#staff' || !isStaffLoggedIn); document.getElementById('cart-trigger-btn').classList.toggle('hidden', h === '#admin' || h === '#staff'); if(isAdminLoggedIn) { renderAdminBills(); renderAdminMenu(); } if(isStaffLoggedIn) { renderStaffOrders(); } }
+function checkRoute() {
+    const h = window.location.hash;
+    isAdminLoggedIn = (h === '#admin' && isAdminLoggedIn);
+    isStaffLoggedIn = (h === '#staff' && isStaffLoggedIn);
+
+    // --- Yeh badlav karein ---
+    const isUserPage = (h !== '#admin' && h !== '#staff');
+    
+    // Status button ko sirf tab dikhayein jab user panel ho
+    document.getElementById('status-trigger-btn').classList.toggle('hidden', !isUserPage);
+    
+    // Agar galti se sidebar khula reh gaya ho to login par band kar dein
+    if (!isUserPage) toggleStatusSidebar(false);
+    // ------------------------
+
+    document.getElementById('customer-panel').classList.toggle('hidden', h === '#admin' || h === '#staff');
+    document.getElementById('admin-login-panel').classList.toggle('hidden', h !== '#admin' || isAdminLoggedIn);
+    document.getElementById('admin-panel').classList.toggle('hidden', h !== '#admin' || !isAdminLoggedIn);
+    document.getElementById('staff-login-panel').classList.toggle('hidden', h !== '#staff' || isStaffLoggedIn);
+    document.getElementById('staff-panel').classList.toggle('hidden', h !== '#staff' || !isStaffLoggedIn);
+    
+    // Purana cart button pehle se hi hidden tha, wahi logic yaha bhi kaam karega
+    document.getElementById('cart-trigger-btn').classList.toggle('hidden', h === '#admin' || h === '#staff');
+
+    if(isAdminLoggedIn) { renderAdminBills(); renderAdminMenu(); }
+    if(isStaffLoggedIn) { renderStaffOrders(); }
+}
         function handleLogin(role) { if (role === 'admin') { if (document.getElementById('admin-id').value === 'admin' && document.getElementById('admin-pass').value === '1234') { isAdminLoggedIn = true; checkRoute(); } else alert("Wrong Pass"); } else if (role === 'staff') { if (document.getElementById('staff-id').value === 'staff' && document.getElementById('staff-pass').value === '1234') { isStaffLoggedIn = true; checkRoute(); } else alert("Wrong Pass"); } }
         function changeQty(i, d) { cart[i].qty += d; if(cart[i].qty < 1) cart.splice(i, 1); updateUI(); }
         function toggleCart(s) { if(s && (window.location.hash === '#admin' || window.location.hash === '#staff')) return; document.getElementById('cart-sidebar-overlay').classList.toggle('hidden', !s); document.getElementById('cart-sidebar').style.transform = s ? 'translateX(0)' : 'translateX(100%)'; }
