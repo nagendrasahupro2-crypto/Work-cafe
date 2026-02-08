@@ -232,27 +232,27 @@ async function fetchOrders() {
         const dataString = JSON.stringify(data);
         
         if (dataString !== lastKnownOrderData) {
-            // --- ALERT LOGIC START ---
             if (isStaffLoggedIn && lastKnownOrderData !== "") {
                 const oldOrders = JSON.parse(lastKnownOrderData);
                 
-                // 1. Check naya order (ID mismatch)
+                // Check 1: Kya koi bilkul naya Order ID aaya hai?
                 const hasNewOrder = data.some(newO => !oldOrders.find(oldO => oldO.id === newO.id));
-                
-                // 2. Check existing order mein naye items (order_status length change)
-                const hasNewItems = data.some(newO => {
+
+                // Check 2: Kya kisi purane order mein items ki count badhi hai?
+                const hasNewItemsAdded = data.some(newO => {
                     const oldO = oldOrders.find(o => o.id === newO.id);
                     if (oldO) {
-                        return newO.order_status !== oldO.order_status;
+                        // Sirf tab sound baje jab naye items ki quantity purani quantity se zyada ho
+                        // Status badalne (Done/Ready) par quantity nahi badalti, isliye sound nahi bajega
+                        return newO.quantity > oldO.quantity;
                     }
                     return false;
                 });
 
-                if (hasNewOrder || hasNewItems) {
+                if (hasNewOrder || hasNewItemsAdded) {
                     playStaffAlert();
                 }
             }
-            // --- ALERT LOGIC END ---
 
             orders = data;
             lastKnownOrderData = dataString;
@@ -563,15 +563,12 @@ function formatOrderDateTime(dateStr) {
 }
 
 function playStaffAlert() {
-    if (!isStaffLoggedIn) return; // Sirf staff panel par baje
-    
-    sounds.newOrderAlert.loop = true; // Sound ko loop par daalein
-    sounds.newOrderAlert.play().catch(e => console.log("Interaction required for audio"));
-    
-    // 5 seconds baad stop kar dein
+    if (!isStaffLoggedIn) return; 
+    sounds.newOrderAlert.loop = true;
+    sounds.newOrderAlert.play().catch(e => console.log("Interaction needed"));
     setTimeout(() => {
         sounds.newOrderAlert.pause();
-        sounds.newOrderAlert.currentTime = 0; // Reset sound
+        sounds.newOrderAlert.currentTime = 0;
     }, 5000);
 }
 
