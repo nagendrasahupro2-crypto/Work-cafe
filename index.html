@@ -201,9 +201,10 @@
         let lastStatusHTML = ""; 
 
         // Notification sounds removed per requirement
-        const sounds = {
-            orderSent: new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3')
-        };
+const sounds = {
+    orderSent: new Audio('https://assets.mixkit.co/active_storage/sfx/2571/2571-preview.mp3'),
+    newOrderAlert: new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3') // Naya alert sound
+};
 
         window.addEventListener('hashchange', checkRoute);
         window.addEventListener('load', () => {
@@ -225,19 +226,42 @@
             }
         }
 
-        async function fetchOrders() {
-            const { data, error } = await _supabase.from('orders').select('*').order('id', { ascending: false });
-            if (!error && data) {
-                const dataString = JSON.stringify(data);
-                if (dataString !== lastKnownOrderData) {
-                    orders = data;
-                    lastKnownOrderData = dataString;
-                    renderCustomerStatus();
-                    if(isAdminLoggedIn) renderAdminBills();
-                    if(isStaffLoggedIn) renderStaffOrders();
+async function fetchOrders() {
+    const { data, error } = await _supabase.from('orders').select('*').order('id', { ascending: false });
+    if (!error && data) {
+        const dataString = JSON.stringify(data);
+        
+        if (dataString !== lastKnownOrderData) {
+            // --- ALERT LOGIC START ---
+            if (isStaffLoggedIn && lastKnownOrderData !== "") {
+                const oldOrders = JSON.parse(lastKnownOrderData);
+                
+                // 1. Check naya order (ID mismatch)
+                const hasNewOrder = data.some(newO => !oldOrders.find(oldO => oldO.id === newO.id));
+                
+                // 2. Check existing order mein naye items (order_status length change)
+                const hasNewItems = data.some(newO => {
+                    const oldO = oldOrders.find(o => o.id === newO.id);
+                    if (oldO) {
+                        return newO.order_status !== oldO.order_status;
+                    }
+                    return false;
+                });
+
+                if (hasNewOrder || hasNewItems) {
+                    playStaffAlert();
                 }
             }
+            // --- ALERT LOGIC END ---
+
+            orders = data;
+            lastKnownOrderData = dataString;
+            renderCustomerStatus();
+            if(isAdminLoggedIn) renderAdminBills();
+            if(isStaffLoggedIn) renderStaffOrders();
         }
+    }
+}
 
         // --- Logic Changes Start Here ---
 
@@ -536,6 +560,19 @@ function formatOrderDateTime(dateStr) {
     const datePart = date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
     const timePart = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
     return `${datePart} • ${timePart}`;
+}
+
+function playStaffAlert() {
+    if (!isStaffLoggedIn) return; // Sirf staff panel par baje
+    
+    sounds.newOrderAlert.loop = true; // Sound ko loop par daalein
+    sounds.newOrderAlert.play().catch(e => console.log("Interaction required for audio"));
+    
+    // 5 seconds baad stop kar dein
+    setTimeout(() => {
+        sounds.newOrderAlert.pause();
+        sounds.newOrderAlert.currentTime = 0; // Reset sound
+    }, 5000);
 }
 
         // --- Unchanged View and UI Helpers ---
