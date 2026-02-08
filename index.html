@@ -317,52 +317,69 @@ let items = [];
 
 function renderCustomerStatus() {
     const active = orders.filter(o => (o.status !== 'Completed' && o.status !== 'Cancelled') && o.device_id === DEVICE_ID && o.created_by !== 'ADMIN');
-    
-    // Sidebar list container
     const statusList = document.getElementById('status-list-sidebar');
     const statusTrigger = document.getElementById('status-trigger-btn');
 
     if (active.length === 0) {
         statusList.innerHTML = `<div class="text-center py-20 text-zinc-400 font-bold">No active orders found.</div>`;
-        statusTrigger.classList.add('opacity-40'); // Orders nahi to button thoda light dikhega
+        statusTrigger.classList.add('opacity-40');
         return;
     }
 
     statusTrigger.classList.remove('opacity-40');
 
     const newHTML = active.map(o => {
-let items = [];
-    try { 
-        items = JSON.parse(o.order_status); // item_name ki jagah order_status
-    } catch(e) { items = []; }
+        let items = [];
+        try { items = JSON.parse(o.order_status); } catch(e) { items = []; }
 
         return `
-<div class="bg-white border-2 border-zinc-100 p-5 rounded-[28px] flex flex-col gap-4 shadow-sm relative overflow-hidden">
-    <div class="flex justify-between items-start border-b pb-3">
-        <div class="flex flex-col gap-1">
-            <span class="text-[10px] font-black bg-zinc-900 text-white px-2 py-1 rounded-lg uppercase w-fit">${o.table_number || 'Takeaway'}</span>
-            <span class="text-[9px] font-bold text-zinc-400 italic">${formatOrderDateTime(o.created_at)}</span>
-        </div>
-        <span class="text-[10px] font-black text-orange-500 italic">Order #${o.id}</span>
-    </div>
-    ...
-</div>
-            <div class="space-y-3">
+        <div class="bg-white border border-zinc-100 p-6 rounded-[32px] flex flex-col gap-4 shadow-sm mb-4">
+            <div class="flex justify-between items-start border-b border-zinc-50 pb-4">
+                <div class="flex flex-col gap-1">
+                    <span class="text-[10px] font-black bg-orange-500 text-white px-3 py-1 rounded-full uppercase w-fit tracking-wider">
+                        ${o.table_number || 'Takeaway'}
+                    </span>
+                    <span class="text-[10px] font-bold text-zinc-400 flex items-center gap-1 mt-1">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        ${formatOrderDateTime(o.created_at)}
+                    </span>
+                </div>
+                <div class="text-right">
+                    <span class="text-[10px] font-black text-zinc-900 block tracking-tighter">ORDER #${o.id}</span>
+                    <span class="text-[9px] font-bold text-orange-600 uppercase">Live Tracking</span>
+                </div>
+            </div>
+
+            <div class="space-y-3 py-2">
                 ${items.map(it => `
-                    <div class="flex justify-between items-center">
+                    <div class="flex justify-between items-center bg-zinc-50/50 p-2 rounded-xl">
                         <div class="flex flex-col">
-                            <span class="text-sm font-bold text-zinc-800">${it.name} <span class="text-zinc-400">x${it.qty}</span></span>
+                            <span class="text-sm font-bold text-zinc-800">${it.name} <span class="text-orange-600 text-xs">x${it.qty}</span></span>
                         </div>
                         <div class="flex items-center gap-2">
-                            <span class="text-[9px] font-black uppercase ${it.status === 'Accepted' ? 'text-green-500' : it.status === 'Rejected' ? 'text-red-500' : 'text-zinc-300'}">${it.status}</span>
-                            ${it.status === 'Accepted' ? '<span class="text-green-500 text-xs">●</span>' : it.status === 'Rejected' ? '<span class="text-red-500 text-xs">●</span>' : '<span class="text-zinc-200 animate-pulse text-xs">●</span>'}
+                            <span class="text-[9px] font-black uppercase ${it.status === 'Accepted' ? 'text-green-600' : it.status === 'Rejected' ? 'text-red-500' : 'text-zinc-400'}">
+                                ${it.status}
+                            </span>
+                            <span class="flex h-2 w-2">
+                                <span class="${it.status === 'Accepted' ? 'bg-green-500' : it.status === 'Rejected' ? 'bg-red-500' : 'bg-zinc-300 animate-ping'} absolute inline-flex h-2 w-2 rounded-full opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 ${it.status === 'Accepted' ? 'bg-green-500' : it.status === 'Rejected' ? 'bg-red-500' : 'bg-zinc-300'}"></span>
+                            </span>
                         </div>
                     </div>
                 `).join('')}
             </div>
-            <div class="pt-3 border-t flex justify-between items-center">
-                <span class="text-[10px] font-black uppercase text-zinc-400">Paid Status: <span class="text-zinc-900">${o.status}</span></span>
-                <span class="text-lg font-black text-zinc-900">₹${o.total_bill}</span>
+
+            <div class="pt-4 border-t border-zinc-50 flex justify-between items-end">
+                <div>
+                    <p class="text-[9px] font-black text-zinc-400 uppercase mb-1 tracking-widest">Payment Status</p>
+                    <span class="text-xs font-bold px-2 py-1 bg-zinc-100 rounded-md text-zinc-600">${o.status}</span>
+                </div>
+                <div class="text-right">
+                    <p class="text-[9px] font-black text-zinc-400 uppercase mb-0.5">Total Bill</p>
+                    <span class="text-2xl font-black text-zinc-900 tracking-tighter">₹${o.total_bill}</span>
+                </div>
             </div>
         </div>
         `;
@@ -439,7 +456,6 @@ let items = [];
     <p class="text-[10px] font-bold text-orange-600/70 mb-2 uppercase tracking-tight">
         Ordered on: ${formatOrderDateTime(o.created_at)}
     </p>
-    ...
 </div>
                         <div class="mt-2 space-y-1">
                             ${items.filter(it => it.status !== 'Rejected').map(it => `<p class="text-sm font-bold uppercase text-zinc-600">• ${it.name} x${it.qty}</p>`).join('')}
@@ -475,16 +491,9 @@ function toggleStatusSidebar(s) {
 function formatOrderDateTime(dateStr) {
     if (!dateStr) return '';
     const date = new Date(dateStr);
-    
-    // Date format: 08 Feb
-    const dateOptions = { day: '2-digit', month: 'short' };
-    const datePart = date.toLocaleDateString('en-IN', dateOptions);
-    
-    // Time format: 04:45 PM
-    const timeOptions = { hour: '2-digit', minute: '2-digit', hour12: true };
-    const timePart = date.toLocaleTimeString('en-IN', timeOptions);
-    
-    return `${datePart} | ${timePart}`;
+    const datePart = date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+    const timePart = date.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    return `${datePart} • ${timePart}`;
 }
 
         // --- Unchanged View and UI Helpers ---
