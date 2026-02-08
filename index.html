@@ -397,39 +397,81 @@ async function sendOrder() {
     const name = document.getElementById('cust-name').value.trim();
     const tableNum = document.getElementById('table-number').value;
     if(!name || !tableNum || cart.length === 0) return alert("Please enter name, select a table, and add items.");
-    
-    // String format for item_name: "Item xQty, Item xQty"
-    const itemNamesString = cart.map(it => `${it.name} x${it.qty}`).join(', ');
-    
-    // Detailed JSON for order_status
-    const detailedStatus = cart.map(it => ({ 
-        name: it.name, 
-        qty: it.qty, 
-        note: it.note || '', 
-        status: 'Pending' 
-    }));
 
-    const { error } = await _supabase.from('orders').insert([{ 
-        customer_name: name, 
-        item_name: itemNamesString, // Ab text format me save hoga
-        order_status: JSON.stringify(detailedStatus), // Ab details yahan save hogi
-        quantity: cart.reduce((s,i) => s + i.qty, 0), 
-        status: 'Pending',
-        device_id: DEVICE_ID,
-        total_bill: cart.reduce((s,i) => s + (i.price*i.qty), 0),
-        table_number: tableNum
-    }]);
+    // 1. Check karein ki kya pehle se koi active order exist karta hai (Not Completed/Cancelled)
+    const { data: existingOrders, error: fetchError } = await _supabase
+        .from('orders')
+        .select('*')
+        .eq('device_id', DEVICE_ID)
+        .in('status', ['Pending', 'Ready'])
+        .limit(1);
 
-    if (!error) {
-        sounds.orderSent.play().catch(()=>{}); 
-        cart = []; 
-        updateUI(); 
-        toggleCart(false);
-        document.getElementById('cust-name').value = '';
-        document.getElementById('order-sent-banner').classList.remove('hidden'); 
-        setTimeout(()=>document.getElementById('order-sent-banner').classList.add('hidden'), 3000);
-        fetchOrders();
+    if (fetchError) return alert("Error checking existing order");
+
+    if (existingOrders && existingOrders.length > 0) {
+        // --- EXISTING ORDER ME ADD KAREIN ---
+        const activeOrder = existingOrders[0];
+        let currentItems = JSON.parse(activeOrder.order_status);
+        
+        // Naye items ko purani list mein merge karein ya add karein
+        cart.forEach(newItem => {
+            const found = currentItems.find(it => it.name === newItem.name && it.status === 'Pending');
+            if (found) {
+                found.qty += newItem.qty; // Agar Pending item pehle se hai to qty badha do
+            } else {
+                currentItems.push({ 
+                    name: newItem.name, 
+                    qty: newItem.qty, 
+                    note: newItem.note || '', 
+                    status: 'Pending' 
+                });
+            }
+        });
+
+        const newTotal = activeOrder.total_bill + cart.reduce((s,i) => s + (i.price*i.qty), 0);
+        const newItemNamesString = currentItems.map(it => `${it.name} x${it.qty}`).join(', ');
+
+        const { error: updateError } = await _supabase.from('orders').update({
+            order_status: JSON.stringify(currentItems),
+            item_name: newItemNamesString,
+            total_bill: newTotal,
+            quantity: currentItems.reduce((s,i) => s + i.qty, 0),
+            status: 'Pending' // Wapas pending tak kitchen ko dikhe
+        }).eq('id', activeOrder.id);
+
+        if (updateError) alert("Update failed");
+
+    } else {
+        // --- NAYA ORDER CREATE KAREIN (Puraana logic) ---
+        const detailedStatus = cart.map(it => ({ 
+            name: it.name, 
+            qty: it.qty, 
+            note: it.note || '', 
+            status: 'Pending' 
+        }));
+
+        const { error: insertError } = await _supabase.from('orders').insert([{ 
+            customer_name: name, 
+            item_name: cart.map(it => `${it.name} x${it.qty}`).join(', '),
+            order_status: JSON.stringify(detailedStatus),
+            quantity: cart.reduce((s,i) => s + i.qty, 0), 
+            status: 'Pending',
+            device_id: DEVICE_ID,
+            total_bill: cart.reduce((s,i) => s + (i.price*i.qty), 0),
+            table_number: tableNum
+        }]);
+        
+        if (insertError) alert("Order failed");
     }
+
+    // Common Cleanup
+    sounds.orderSent.play().catch(()=>{}); 
+    cart = []; 
+    updateUI(); 
+    toggleCart(false);
+    document.getElementById('order-sent-banner').classList.remove('hidden'); 
+    setTimeout(()=>document.getElementById('order-sent-banner').classList.add('hidden'), 3000);
+    fetchOrders();
 }
 
         async function updateOrderStatus(id, s, role) { 
